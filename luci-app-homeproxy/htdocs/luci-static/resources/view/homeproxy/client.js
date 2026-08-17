@@ -578,8 +578,18 @@ return view.extend({
 		o = s.taboption('routing', form.Flag, 'endpoint_independent_nat', _('Enable endpoint-independent NAT'),
 			_('Performance may degrade slightly, so it is not recommended to enable on when it is not needed.'));
 		o.default = o.disabled;
-		o.depends({'tcpip_stack': 'mixed', 'main_node': /^((?!core_only).)+$/});
-		o.depends({'tcpip_stack': 'gvisor', 'main_node': /^((?!core_only).)+$/});
+		/* Defensive: mirror tcpip_stack's own depends() exactly
+		 * (proxy_mode redirect_tun/tun + main_node not core_only),
+		 * not just its value. Belt-and-suspenders in case a future
+		 * LuCI/form.js change ever lets an inactive field's stale
+		 * value leak into a dependency check again - without the
+		 * proxy_mode condition here, this toggle would otherwise be
+		 * one such leak away from showing up outside TUN mode, where
+		 * it's meaningless. */
+		o.depends({'tcpip_stack': 'mixed', 'proxy_mode': 'redirect_tun', 'main_node': /^((?!core_only).)+$/});
+		o.depends({'tcpip_stack': 'mixed', 'proxy_mode': 'tun', 'main_node': /^((?!core_only).)+$/});
+		o.depends({'tcpip_stack': 'gvisor', 'proxy_mode': 'redirect_tun', 'main_node': /^((?!core_only).)+$/});
+		o.depends({'tcpip_stack': 'gvisor', 'proxy_mode': 'tun', 'main_node': /^((?!core_only).)+$/});
 		o.rmempty = false;
 
 		o = s.taboption('routing', form.Flag, 'ipv6_support', _('IPv6 support'));
