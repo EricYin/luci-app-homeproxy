@@ -1242,9 +1242,10 @@ msgstr "信息"
 msgid "Interface Control"
 msgstr "接口控制"
 
-#: htdocs/luci-static/resources/view/homeproxy/client.js:560
+#: htdocs/luci-static/resources/view/homeproxy/client.js:361
+#: htdocs/luci-static/resources/view/homeproxy/client.js:427
 msgid "Interrupt existing connections"
-msgstr "中断现有连接"
+msgstr "自动切换时断开旧连接"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:561
 msgid "Interrupt existing connections when the selected outbound has changed."
