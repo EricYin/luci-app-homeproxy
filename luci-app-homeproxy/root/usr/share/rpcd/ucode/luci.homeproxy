@@ -279,17 +279,17 @@ const methods = {
 			let url;
 			switch(req.args?.site) {
 			case 'baidu':
-				url = 'https://www.baidu.com';
+				url = 'http://connect.rom.miui.com/generate_204';
 				break;
 			case 'google':
-				url = 'https://www.google.com';
+				url = 'https://www.google.com/generate_204';
 				break;
 			default:
 				return { result: false, error: 'illegal site' };
 				break;
 			}
 
-			return { result: (system(`/usr/bin/wget --spider -qT3 ${url} 2>"/dev/null"`, 3100) === 0) };
+			return { result: (system(`/usr/bin/wget -4 --spider -qT3 ${url} 2>"/dev/null"`, 3100) === 0) };
 		}
 	},
 
