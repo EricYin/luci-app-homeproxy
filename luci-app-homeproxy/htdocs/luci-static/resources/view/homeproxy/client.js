@@ -358,6 +358,10 @@ return view.extend({
 		o.placeholder = '50';
 		o.depends('main_node', 'urltest');
 
+		o = s.taboption('routing', form.Flag, 'main_urltest_interrupt_exist_connections', _('Interrupt existing connections'));
+		o.default = o.enabled;
+		o.depends('main_node', 'urltest');
+
 		o = s.taboption('routing', form.ListValue, 'main_core_profile', _('Core config file'));
 		if (!Object.keys(core_profiles).length)
 			o.value('', _('-- none --'));
@@ -418,6 +422,10 @@ return view.extend({
 			_('The test tolerance in milliseconds.'));
 		o.datatype = 'uinteger';
 		o.placeholder = '50';
+		o.depends({'main_udp_node': 'urltest', 'main_node': /^((?!core_only).)+$/});
+
+		o = s.taboption('routing', form.Flag, 'main_udp_urltest_interrupt_exist_connections', _('Interrupt existing connections'));
+		o.default = o.enabled;
 		o.depends({'main_udp_node': 'urltest', 'main_node': /^((?!core_only).)+$/});
 
 		o = s.taboption('routing', form.Value, 'dns_server', _('DNS server'),
