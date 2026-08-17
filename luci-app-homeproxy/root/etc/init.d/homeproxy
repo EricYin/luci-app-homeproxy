@@ -71,6 +71,48 @@ sync_cron_tag() {
 	[ "$changed" -eq 0 ] || reload_cron
 }
 
+# Same reasoning as sync_cron_tag, applied to the dnsmasq-homeproxy.d
+# directory: "$1" is a scratch directory the caller has already filled
+# with the *.conf files that should be live, "$2" is the desired content
+# of the top-level "conf-dir=..." pointer file. dnsmasq restart is a full
+# kill+respawn (not a cheap reload), so this only actually restarts
+# dnsmasq when the rendered content differs from what's already on disk -
+# harmless on a genuine fresh start (nothing to compare against, so it
+# always applies), but it means an unrelated settings change no longer
+# forces a full dnsmasq restart on every single save/apply.
+#
+# Note: this only pays off because stop_service (see HP_RELOAD) leaves
+# the previous DNSMASQ_DIR content in place during a reload instead of
+# deleting it first - otherwise there'd be nothing meaningful to diff
+# against and this would restart every time regardless.
+sync_dnsmasq_dir() {
+	local new_dir="$1" conf_line="$2"
+	local conf_file="$DNSMASQ_DIR/../dnsmasq-homeproxy.conf"
+	local changed=0 old_sum new_sum
+
+	if [ ! -f "$conf_file" ] || [ "$(cat "$conf_file" 2>"/dev/null")" != "$conf_line" ]; then
+		changed=1
+	fi
+
+	if [ "$changed" -eq 0 ]; then
+		if [ -d "$DNSMASQ_DIR" ]; then
+			old_sum="$(cd "$DNSMASQ_DIR" 2>"/dev/null" && find . -type f | sort | while IFS= read -r f; do md5sum "$f"; done)"
+		fi
+		new_sum="$(cd "$new_dir" 2>"/dev/null" && find . -type f | sort | while IFS= read -r f; do md5sum "$f"; done)"
+		[ "$old_sum" = "$new_sum" ] || changed=1
+	fi
+
+	if [ "$changed" -eq 1 ]; then
+		mkdir -p "$DNSMASQ_DIR"
+		rm -f "$DNSMASQ_DIR"/*.conf 2>"/dev/null"
+		cp -f "$new_dir"/*.conf "$DNSMASQ_DIR/" 2>"/dev/null"
+		echo -e "$conf_line" > "$conf_file"
+		/etc/init.d/dnsmasq restart >"/dev/null" 2>&1
+	fi
+
+	rm -rf "$new_dir" 2>"/dev/null"
+}
+
 start_service() {
 	config_load "$CONF"
 
@@ -218,6 +260,17 @@ start_service() {
 		return 1
 	fi
 
+	# Safety net for HP_RELOAD: stop_service normally leaves any previous
+	# DNS hijack files alone during a reload, trusting the client block
+	# below to reconcile them via sync_dnsmasq_dir. If the client just
+	# got disabled (outbound_node=nil) that block won't run at all, so
+	# clean up here instead - otherwise a stale DNS hijack would be left
+	# active pointing at a client that's no longer running.
+	if [ "$outbound_node" = "nil" ] && { [ -d "$DNSMASQ_DIR" ] || [ -f "$DNSMASQ_DIR/../dnsmasq-homeproxy.conf" ]; }; then
+		rm -rf "$DNSMASQ_DIR/../dnsmasq-homeproxy.conf" "$DNSMASQ_DIR"
+		/etc/init.d/dnsmasq restart >"/dev/null" 2>&1
+	fi
+
 	mkdir -p "$RUN_DIR"
 
 	if [ "$outbound_node" != "nil" ]; then
@@ -252,11 +305,17 @@ start_service() {
 		local ipv6_support dns_port
 		config_get_bool ipv6_support "config" "ipv6_support" "0"
 		config_get dns_port "infra" "dns_port" "5333"
-		mkdir -p "$DNSMASQ_DIR"
-		echo -e "conf-dir=$DNSMASQ_DIR" > "$DNSMASQ_DIR/../dnsmasq-homeproxy.conf"
+
+		# Render into a scratch dir first; sync_dnsmasq_dir decides
+		# whether the live dir/dnsmasq restart actually need to change.
+		rm -rf "${RUN_DIR}"/dnsmasq-new.* 2>"/dev/null"
+		local dns_new_dir
+		dns_new_dir="$(mktemp -d "${RUN_DIR}/dnsmasq-new.XXXXXX" 2>"/dev/null")" || dns_new_dir="$RUN_DIR/dnsmasq-new.$$"
+		mkdir -p "$dns_new_dir"
+
 		case "$routing_mode" in
 		"bypass_mainland_china"|"global")
-			cat <<-EOF >> "$DNSMASQ_DIR/redirect-dns.conf"
+			cat <<-EOF >> "$dns_new_dir/redirect-dns.conf"
 				no-poll
 				no-resolv
 				server=127.0.0.1#$dns_port
@@ -266,11 +325,11 @@ start_service() {
 			local gfw_nftset_v6
 			[ "$ipv6_support" -eq "0" ] || gfw_nftset_v6=",6#inet#fw4#homeproxy_gfw_list_v6"
 			sed -r -e "s/(.*)/server=\/\1\/127.0.0.1#$dns_port\nnftset=\/\1\\/4#inet#fw4#homeproxy_gfw_list_v4$gfw_nftset_v6/g" \
-				"$HP_DIR/resources/gfw_list.txt" > "$DNSMASQ_DIR/gfw_list.conf"
+				"$HP_DIR/resources/gfw_list.txt" > "$dns_new_dir/gfw_list.conf"
 			;;
 		"proxy_mainland_china")
 			sed -r -e "s/(.*)/server=\/\1\/127.0.0.1#$dns_port/g" \
-				"$HP_DIR/resources/china_list.txt" > "$DNSMASQ_DIR/china_list.conf"
+				"$HP_DIR/resources/china_list.txt" > "$dns_new_dir/china_list.conf"
 			;;
 		esac
 
@@ -278,9 +337,10 @@ start_service() {
 			local wan_nftset_v6
 			[ "$ipv6_support" -eq "0" ] || wan_nftset_v6=",6#inet#fw4#homeproxy_wan_proxy_addr_v6"
 			sed -r -e '/^\s*$/d' -e "s/(.*)/server=\/\1\/127.0.0.1#$dns_port\nnftset=\/\1\\/4#inet#fw4#homeproxy_wan_proxy_addr_v4$wan_nftset_v6/g" \
-				"$HP_DIR/resources/proxy_list.txt" > "$DNSMASQ_DIR/proxy_list.conf"
+				"$HP_DIR/resources/proxy_list.txt" > "$dns_new_dir/proxy_list.conf"
 		fi
-		/etc/init.d/dnsmasq restart >"/dev/null" 2>&1
+
+		sync_dnsmasq_dir "$dns_new_dir" "conf-dir=$DNSMASQ_DIR"
 
 		# Setup routing table
 		local table_mark
@@ -308,7 +368,14 @@ start_service() {
 			config_get tun_mark "infra" "tun_mark" "102"
 
 			ip tuntap add mode tun user root name "$tun_name"
-			sleep 1s
+			# "ip tuntap add" is a synchronous netlink call, so the
+			# interface normally already exists by the time it
+			# returns - only fall back to the old flat 1s wait if
+			# it somehow isn't visible yet (slow kernel etc.), so
+			# this doesn't cost anything in the common case, unlike
+			# before when this ran unconditionally on every single
+			# start/reload.
+			ip link show "$tun_name" >"/dev/null" 2>&1 || sleep 1s
 			ip link set "$tun_name" up
 
 			ip route replace default dev "$tun_name" table "$table_mark"
@@ -479,9 +546,17 @@ stop_service() {
 	echo 2>"/dev/null" > "$RUN_DIR/fw4_post.nft"
 	fw4 reload >"/dev/null" 2>&1
 
-	# Remove DNS hijack
-	rm -rf "$DNSMASQ_DIR/../dnsmasq-homeproxy.conf" "$DNSMASQ_DIR"
-	/etc/init.d/dnsmasq restart >"/dev/null" 2>&1
+	# Remove DNS hijack - skipped during a reload (HP_RELOAD, set by
+	# reload_service) so start_service's sync_dnsmasq_dir has the
+	# previous live content to compare against and can skip the
+	# dnsmasq restart entirely when nothing actually changed. A real
+	# stop (service disabled) always cleans this up as before; so does
+	# start_service itself if the client ends up disabled (see the
+	# HP_RELOAD safety net there).
+	if [ "$HP_RELOAD" != "1" ]; then
+		rm -rf "$DNSMASQ_DIR/../dnsmasq-homeproxy.conf" "$DNSMASQ_DIR"
+		/etc/init.d/dnsmasq restart >"/dev/null" 2>&1
+	fi
 
 	rm -f "$RUN_DIR/sing-box-c.json" "$RUN_DIR/sing-box-c.log" \
 		"$RUN_DIR/sing-box-s.json" "$RUN_DIR/sing-box-s.log"
@@ -503,8 +578,14 @@ service_stopped() {
 reload_service() {
 	log "Reloading service..."
 
-	stop
-	start
+	# HP_RELOAD tells stop_service this "stop" is only the first half of
+	# a reload (save/apply), not a real service disable, so it can skip
+	# tearing down state that start_service is about to rebuild anyway
+	# (see the DNS hijack handling in both functions). This is what lets
+	# sync_dnsmasq_dir actually compare against the *previous* live
+	# config instead of an empty directory stop just deleted.
+	HP_RELOAD=1 stop
+	HP_RELOAD=1 start
 }
 
 service_triggers() {
