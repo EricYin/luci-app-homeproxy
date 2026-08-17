@@ -1120,7 +1120,7 @@ function main() {
 
 			if (filter_check(config.label))
 				log(sprintf('Skipping blacklist node: %s.', config.label));
-			else if (node_cache[groupHash][confHash] || node_cache[groupHash][nameHash])
+			else if (node_cache[groupHash][confHash] && node_cache[groupHash][nameHash])
 				log(sprintf('Skipping duplicate node: %s.', config.label));
 			else {
 				if (config.tls === '1' && allow_insecure === '1')
