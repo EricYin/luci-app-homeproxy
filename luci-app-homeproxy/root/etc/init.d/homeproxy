@@ -31,6 +31,46 @@ log() {
 	echo -e "$(date "+%Y-%m-%d %H:%M:%S") [DAEMON] $*" >> "$LOG_PATH"
 }
 
+CRON_FILE="/etc/crontabs/root"
+
+reload_cron() {
+	# "reload" sends crond a SIGHUP to re-read crontabs in place; it does
+	# NOT kill/respawn the process, so it's near-instant. Fall back to a
+	# full "restart" only if the init script doesn't support reload.
+	/etc/init.d/cron reload >"/dev/null" 2>&1 ||
+		/etc/init.d/cron restart >"/dev/null" 2>&1
+}
+
+# Ensure exactly one crontab line tagged "#$tag" equals $line (pass an
+# empty $line to remove the tag instead). Only rewrites $CRON_FILE, and
+# only reloads cron, when the content actually changed. This replaces the
+# previous unconditional "/etc/init.d/cron restart" that used to run on
+# every single start/stop (i.e. every save/apply, since reload_service is
+# just stop+start) even when nothing cron-related had changed - that
+# unconditional restart is what caused the noticeable delay on save.
+sync_cron_tag() {
+	local tag="$1" line="$2" tmp changed=0
+
+	mkdir -p "$(dirname "$CRON_FILE")" 2>"/dev/null"
+	tmp="$(mktemp "${CRON_FILE}.XXXXXX" 2>"/dev/null")" || return 1
+
+	if [ -f "$CRON_FILE" ]; then
+		sed "/#${tag}\$/d" "$CRON_FILE" > "$tmp"
+	else
+		: > "$tmp"
+	fi
+	[ -z "$line" ] || echo -e "$line" >> "$tmp"
+
+	if [ -f "$CRON_FILE" ] && cmp -s "$tmp" "$CRON_FILE"; then
+		rm -f "$tmp"
+	else
+		mv -f "$tmp" "$CRON_FILE"
+		changed=1
+	fi
+
+	[ "$changed" -eq 0 ] || reload_cron
+}
+
 start_service() {
 	config_load "$CONF"
 
@@ -39,12 +79,12 @@ start_service() {
 	# Auto restart (global, applies to any mode)
 	local auto_restart auto_restart_cron
 	config_get_bool auto_restart "config" "auto_restart" "0"
-	sed -i "/#${CONF}_restart_autosetup/d" "/etc/crontabs/root" 2>"/dev/null"
 	if [ "$auto_restart" = "1" ]; then
 		config_get auto_restart_cron "config" "auto_restart_cron" "0 2 * * *"
-		echo -e "$auto_restart_cron /etc/init.d/homeproxy restart #${CONF}_restart_autosetup" >> "/etc/crontabs/root"
+		sync_cron_tag "${CONF}_restart_autosetup" "$auto_restart_cron /etc/init.d/homeproxy restart #${CONF}_restart_autosetup"
+	else
+		sync_cron_tag "${CONF}_restart_autosetup" ""
 	fi
-	/etc/init.d/cron restart
 
 	# "Core only" mode: this is just another value of the existing
 	# "Main node" selector (alongside "Disable"/"URLTest"/a real node).
@@ -205,9 +245,7 @@ start_service() {
 		config_get_bool auto_update "subscription" "auto_update" "0"
 		if [ "$auto_update" = "1" ]; then
 			config_get auto_update_time "subscription" "auto_update_time" "2"
-			sed -i "/#${CONF}_autosetup/d" "/etc/crontabs/root" 2>"/dev/null"
-			echo -e "0 $auto_update_time * * * $HP_DIR/scripts/update_crond.sh #${CONF}_autosetup" >> "/etc/crontabs/root"
-			/etc/init.d/cron restart
+			sync_cron_tag "${CONF}_autosetup" "0 $auto_update_time * * * $HP_DIR/scripts/update_crond.sh #${CONF}_autosetup"
 		fi
 
 		# DNSMasq rules
@@ -391,9 +429,8 @@ start_service() {
 }
 
 stop_service() {
-	sed -i "/#${CONF}_autosetup/d" "/etc/crontabs/root" 2>"/dev/null"
-	sed -i "/#${CONF}_restart_autosetup/d" "/etc/crontabs/root" 2>"/dev/null"
-	/etc/init.d/cron restart >"/dev/null" 2>&1
+	sync_cron_tag "${CONF}_autosetup" ""
+	sync_cron_tag "${CONF}_restart_autosetup" ""
 
 	# Setup firewall
 	# Load config
