@@ -359,7 +359,8 @@ return view.extend({
 		o.depends('main_node', 'urltest');
 
 		o = s.taboption('routing', form.Flag, 'main_urltest_interrupt_exist_connections', _('Interrupt existing connections'));
-		o.default = o.enabled;
+		o.default = o.disabled;
+		o.rmempty = false;
 		o.depends('main_node', 'urltest');
 
 		o = s.taboption('routing', form.ListValue, 'main_core_profile', _('Core config file'));
@@ -425,7 +426,8 @@ return view.extend({
 		o.depends({'main_udp_node': 'urltest', 'main_node': /^((?!core_only).)+$/});
 
 		o = s.taboption('routing', form.Flag, 'main_udp_urltest_interrupt_exist_connections', _('Interrupt existing connections'));
-		o.default = o.enabled;
+		o.default = o.disabled;
+		o.rmempty = false;
 		o.depends({'main_udp_node': 'urltest', 'main_node': /^((?!core_only).)+$/});
 
 		o = s.taboption('routing', form.Value, 'dns_server', _('DNS server'),
