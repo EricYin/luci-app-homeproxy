@@ -534,6 +534,7 @@ if (!isEmpty(main_node)) {
 		const main_urltest_nodes = uci.get(uciconfig, ucimain, 'main_urltest_nodes') || [];
 		const main_urltest_interval = uci.get(uciconfig, ucimain, 'main_urltest_interval');
 		const main_urltest_tolerance = uci.get(uciconfig, ucimain, 'main_urltest_tolerance');
+		const main_urltest_interrupt = uci.get(uciconfig, ucimain, 'main_urltest_interrupt_exist_connections');
 
 		push(config.outbounds, {
 			type: 'urltest',
@@ -542,6 +543,7 @@ if (!isEmpty(main_node)) {
 			interval: strToTime(main_urltest_interval),
 			tolerance: strToInt(main_urltest_tolerance),
 			idle_timeout: (strToInt(main_urltest_interval) > 1800) ? `${main_urltest_interval * 2}s` : null,
+			interrupt_exist_connections: (main_urltest_interrupt === '1') ? true : null,
 		});
 		urltest_nodes = main_urltest_nodes;
 	} else {
@@ -559,6 +561,7 @@ if (!isEmpty(main_node)) {
 		const main_udp_urltest_nodes = uci.get(uciconfig, ucimain, 'main_udp_urltest_nodes') || [];
 		const main_udp_urltest_interval = uci.get(uciconfig, ucimain, 'main_udp_urltest_interval');
 		const main_udp_urltest_tolerance = uci.get(uciconfig, ucimain, 'main_udp_urltest_tolerance');
+		const main_udp_urltest_interrupt = uci.get(uciconfig, ucimain, 'main_udp_urltest_interrupt_exist_connections');
 
 		push(config.outbounds, {
 			type: 'urltest',
@@ -567,6 +570,7 @@ if (!isEmpty(main_node)) {
 			interval: strToTime(main_udp_urltest_interval),
 			tolerance: strToInt(main_udp_urltest_tolerance),
 			idle_timeout: (strToInt(main_udp_urltest_interval) > 1800) ? `${main_udp_urltest_interval * 2}s` : null,
+			interrupt_exist_connections: (main_udp_urltest_interrupt === '1') ? true : null,
 		});
 		urltest_nodes = [...urltest_nodes, ...filter(main_udp_urltest_nodes, (l) => !~index(urltest_nodes, l))];
 	} else if (dedicated_udp_node) {
