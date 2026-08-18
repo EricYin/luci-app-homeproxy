@@ -1,8 +1,3 @@
-/*
- * SPDX-License-Identifier: GPL-2.0-only
- *
- * Copyright (C) 2022-2025 ImmortalWrt.org
- */
 
 'use strict';
 'require form';
@@ -85,31 +80,15 @@ function openDashboardUrl(apiPort, apiSecret) {
 	window.open(`http://${window.location.hostname}:${apiPort}/ui/?${params}`, '_blank');
 }
 
-/* uci.get() reflects the last actually-saved config, not whatever is
- * currently (maybe unsaved) selected in the form widgets. That's
- * exactly what we want here: the "Open dashboard"/"Restart service"
- * row shows as soon as "Core only" is picked in the dropdown (CBI's
- * depends() reacts to the live widget value), but the buttons should
- * stay inert until "Core only" has actually been saved & applied -
- * otherwise clicking them would act on a mode that isn't really
- * running yet. */
 function isCoreOnlyActive() {
 	return uci.get('homeproxy', 'config', 'main_node') === 'core_only';
 }
 
-/* Same idea, but for the normal-mode (non-Core Only, non-Disable)
- * bundled dashboard: the button row shows as soon as anything other
- * than "Core only" is picked in the dropdown (live widget value), but
- * should stay inert until a real normal-mode main_node has actually
- * been saved & applied - "Disable" alone doesn't run sing-box either. */
 function isNormalModeActive() {
 	let main_node = uci.get('homeproxy', 'config', 'main_node');
 	return main_node !== 'core_only' && main_node !== 'nil';
 }
 
-/* Same idea as clicking a disabled control: give the normal
- * click/spinner feedback so the button doesn't feel broken, but don't
- * actually do anything. */
 function noopFeedback() {
 	return new Promise((resolve) => setTimeout(resolve, 400));
 }
@@ -155,16 +134,6 @@ function openDashboard() {
 		return;
 	}
 
-	/* sing-box has two ways to configure the Clash-compatible API/
-	 * dashboard, depending on version:
-	 *   - new (sing-box >= 1.12): a "services" array entry with
-	 *     "type": "api", using separate "listen"/"listen_port" fields
-	 *   - legacy: "experimental.clash_api.external_controller" as a
-	 *     combined "host:port" string
-	 * Check both, and collect ALL of them - a config can perfectly well
-	 * define both at once (e.g. a "services" api entry running
-	 * sing-box-dashboard on one port, plus a legacy clash_api running
-	 * zashboard on another), in which case the user gets to pick. */
 	function extractApiConfigs(conf) {
 		let configs = [];
 
@@ -187,8 +156,6 @@ function openDashboard() {
 		return configs;
 	}
 
-	/* Shows a small picker modal when more than one dashboard/API is
-	 * configured, so the user can choose which one to open. */
 	function pickDashboard(apis) {
 		ui.showModal(_('Open dashboard'), [
 			E('p', _('More than one dashboard is configured. Choose which one to open:')),
@@ -218,10 +185,6 @@ function openDashboard() {
 
 		const apis = extractApiConfigs(conf);
 		if (apis.length === 0) {
-			/* Not a real error - this core config just doesn't have a
-			 * dashboard/API set up. Treat it the same as clicking a
-			 * disabled control: no popup, just let the caller give the
-			 * normal spin/no-op feedback. */
 			let err = new Error('no dashboard configured');
 			err.silent = true;
 			throw err;
@@ -233,13 +196,6 @@ function openDashboard() {
 			pickDashboard(apis);
 	}
 
-	/* The init script writes the exact config sing-box was launched
-	 * with to /var/run/homeproxy/sing-box-core.json on every start, so
-	 * prefer that: it reflects whatever port is actually listening
-	 * right now, even if the file on disk has since been edited but
-	 * not applied yet. Fall back to the on-disk file if the runtime
-	 * copy doesn't exist (service never started, or startup fell back
-	 * to running the original file as-is - see the init script). */
 	return fs.read_direct('/var/run/homeproxy/sing-box-core.json', 'text').then((runtimeContent) => {
 		openFromConfig(runtimeContent);
 	}).catch(() => {
@@ -269,7 +225,6 @@ return view.extend({
 		let features = data[1],
 		    hosts = data[2]?.hosts;
 
-		/* Cache all configured proxy nodes, they will be called multiple times */
 		let proxy_nodes = {};
 		uci.sections(data[0], 'node', (res) => {
 			let nodeaddr = ((res.type === 'direct') ? res.override_address : res.address) || '',
@@ -280,9 +235,6 @@ return view.extend({
 					String.format('[%s]', nodeaddr) : nodeaddr) + ':' + nodeport));
 		});
 
-		/* Combine locally uploaded files and "Subscription" entries
-		 * (Node Settings -> Core Config) into one list for the "Core
-		 * config file" picker below. */
 		let core_profiles = {};
 		for (let f of (data[3] || []))
 			if (f.type === 'file')
@@ -303,12 +255,6 @@ return view.extend({
 		m = new form.Map('homeproxy', _('HomeProxy'),
 			_('The modern ImmortalWrt proxy platform for ARM64/AMD64.'));
 
-		/* Save & Apply's own promise resolves as soon as the config is
-		 * committed and the apply request is confirmed - it has nothing
-		 * to do with the independent poll.add() timer below, so the
-		 * status text would otherwise sit stale until the next tick
-		 * (up to one full pollinterval later). Re-check once right
-		 * after apply so it flips to RUNNING/NOT RUNNING immediately. */
 		m.handleSaveApply = function (ev, mode) {
 			return form.Map.prototype.handleSaveApply.call(this, ev, mode).then((res) => {
 				refreshStatus();
@@ -442,11 +388,6 @@ return view.extend({
 		o.value('117.50.10.10', _('ThreatBook Public DNS (117.50.10.10)'));
 		o.default = '8.8.8.8';
 		o.rmempty = false;
-		/* Not core_only (raw core config doesn't go through this DNS
-		 * setting at all). Expressed as one OR'd depends() per allowed
-		 * routing_mode value, each ANDed with the main_node exclusion,
-		 * since mixing '!reverse' with an extra AND key would flip the
-		 * wrong half of the condition. */
 		o.depends({'routing_mode': 'gfwlist', 'main_node': /^((?!core_only).)+$/});
 		o.depends({'routing_mode': 'bypass_mainland_china', 'main_node': /^((?!core_only).)+$/});
 		o.depends({'routing_mode': 'proxy_mainland_china', 'main_node': /^((?!core_only).)+$/});
@@ -523,7 +464,6 @@ return view.extend({
 			_('Specify target ports to be proxied. Multiple ports must be separated by commas.'));
 		o.value('', _('All ports'));
 		o.value('common', _('Common ports only (bypass P2P traffic)'));
-		o.default = 'common';
 		o.depends({'main_node': /^((?!core_only).)+$/});
 		o.validate = function(section_id, value) {
 			if (section_id && value && value !== 'common') {
@@ -579,14 +519,6 @@ return view.extend({
 		o = s.taboption('routing', form.Flag, 'endpoint_independent_nat', _('Enable endpoint-independent NAT'),
 			_('Performance may degrade slightly, so it is not recommended to enable on when it is not needed.'));
 		o.default = o.disabled;
-		/* Defensive: mirror tcpip_stack's own depends() exactly
-		 * (proxy_mode redirect_tun/tun + main_node not core_only),
-		 * not just its value. Belt-and-suspenders in case a future
-		 * LuCI/form.js change ever lets an inactive field's stale
-		 * value leak into a dependency check again - without the
-		 * proxy_mode condition here, this toggle would otherwise be
-		 * one such leak away from showing up outside TUN mode, where
-		 * it's meaningless. */
 		o.depends({'tcpip_stack': 'mixed', 'proxy_mode': 'redirect_tun', 'main_node': /^((?!core_only).)+$/});
 		o.depends({'tcpip_stack': 'mixed', 'proxy_mode': 'tun', 'main_node': /^((?!core_only).)+$/});
 		o.depends({'tcpip_stack': 'gvisor', 'proxy_mode': 'redirect_tun', 'main_node': /^((?!core_only).)+$/});
@@ -615,17 +547,6 @@ return view.extend({
 			return true;
 		};
 
-		/* Dashboard settings start
-		 * Self-hosted sing-box dashboard, independent of Core Only
-		 * mode's own "Open dashboard" button above (Actions row,
-		 * main_node=core_only): that one opens whatever dashboard/API
-		 * the user configured inside their own raw core config file.
-		 * This one is HomeProxy's own bundled dashboard, generated by
-		 * generate_client.uc - which never even runs under Core Only
-		 * mode (init.d branches to the raw core config path instead),
-		 * so hiding these fields there is enough to keep the two
-		 * completely separate. Always on for normal mode - no
-		 * enable/disable switch needed. */
 		o = s.taboption('dashboard', form.Value, 'dashboard_port', _('Listen port'));
 		o.default = '9096';
 		o.datatype = 'port';
@@ -651,15 +572,12 @@ return view.extend({
 				host = '[' + host + ']';
 			window.open('http://' + host + ':' + port + '/dashboard/', '_blank', 'noopener,noreferrer');
 		};
-		/* Dashboard settings end */
 
-		/* ACL settings start */
 		s.tab('control', _('Access Control'));
 
 		o = s.taboption('control', form.SectionValue, '_control', form.NamedSection, 'control', 'homeproxy');
 		ss = o.subsection;
 
-		/* Interface control start */
 		ss.tab('interface', _('Interface Control'));
 
 		so = ss.taboption('interface', widgets.DeviceSelect, 'listen_interfaces', _('Listen interfaces'),
@@ -671,9 +589,7 @@ return view.extend({
 			_('Bind outbound traffic to specific interface. Leave empty to auto detect.'));
 		so.multiple = false;
 		so.noaliases = true;
-		/* Interface control end */
 
-		/* LAN IP policy start */
 		ss.tab('lan_ip_policy', _('LAN IP Policy'));
 
 		so = ss.taboption('lan_ip_policy', form.ListValue, 'lan_proxy_mode', _('Proxy filter mode'));
@@ -714,9 +630,7 @@ return view.extend({
 		so.depends('homeproxy.config.ipv6_support', '1');
 
 		so = fwtool.addMACOption(ss, 'lan_ip_policy', 'lan_global_proxy_mac_addrs', _('Global proxy MAC-s'), null, hosts);
-		/* LAN IP policy end */
 
-		/* WAN IP policy start */
 		ss.tab('wan_ip_policy', _('WAN IP Policy'));
 
 		so = ss.taboption('wan_ip_policy', form.DynamicList, 'wan_proxy_ipv4_ips', _('Proxy IPv4 IP-s'));
@@ -732,16 +646,14 @@ return view.extend({
 		so = ss.taboption('wan_ip_policy', form.DynamicList, 'wan_direct_ipv6_ips', _('Direct IPv6 IP-s'));
 		so.datatype = 'or(ip6addr, cidr6)';
 		so.depends('homeproxy.config.ipv6_support', '1');
-		/* WAN IP policy end */
 
-		/* Proxy domain list start */
 		ss.tab('proxy_domain_list', _('Proxy Domain List'));
 
 		so = ss.taboption('proxy_domain_list', form.TextValue, '_proxy_domain_list');
 		so.rows = 10;
 		so.monospace = true;
 		so.datatype = 'hostname';
-		so.load = function(/* ... */) {
+		so.load = function() {
 			return L.resolveDefault(callReadDomainList('proxy_list')).then((res) => {
 				return res.content;
 			}, {});
@@ -749,7 +661,7 @@ return view.extend({
 		so.write = function(_section_id, value) {
 			return callWriteDomainList('proxy_list', value);
 		}
-		so.remove = function(/* ... */) {
+		so.remove = function() {
 			return callWriteDomainList('proxy_list', '');
 		}
 		so.validate = function(section_id, value) {
@@ -760,16 +672,14 @@ return view.extend({
 
 			return true;
 		}
-		/* Proxy domain list end */
 
-		/* Direct domain list start */
 		ss.tab('direct_domain_list', _('Direct Domain List'));
 
 		so = ss.taboption('direct_domain_list', form.TextValue, '_direct_domain_list');
 		so.rows = 10;
 		so.monospace = true;
 		so.datatype = 'hostname';
-		so.load = function(/* ... */) {
+		so.load = function() {
 			return L.resolveDefault(callReadDomainList('direct_list')).then((res) => {
 				return res.content;
 			}, {});
@@ -777,7 +687,7 @@ return view.extend({
 		so.write = function(_section_id, value) {
 			return callWriteDomainList('direct_list', value);
 		}
-		so.remove = function(/* ... */) {
+		so.remove = function() {
 			return callWriteDomainList('direct_list', '');
 		}
 		so.validate = function(section_id, value) {
@@ -788,8 +698,6 @@ return view.extend({
 
 			return true;
 		}
-		/* Direct domain list end */
-		/* ACL settings end */
 
 		return m.render();
 	}
