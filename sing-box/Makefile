@@ -2,9 +2,9 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=sing-box
-PKG_VERSION:=1.14.0_beta15
+PKG_VERSION:=1.14.0_beta14
 PKG_RELEASE:=1
-PKG_SOURCE_VERSION:=1.14.0-beta.15-reF1nd
+PKG_SOURCE_VERSION:=1.14.0-beta.14-reF1nd
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_SOURCE_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/reF1nd/sing-box/tar.gz/v$(PKG_SOURCE_VERSION)?
