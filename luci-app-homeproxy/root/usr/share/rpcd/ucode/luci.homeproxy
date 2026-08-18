@@ -88,7 +88,7 @@ function core_gh_token_header() {
 
 function core_fetch_json(url) {
 	const token_hdr = core_gh_token_header();
-	const fd = popen(`wget -qO- --timeout=10 ${token_hdr} ${url} 2>/dev/null`);
+	const fd = popen(`wget -4 -qO- --timeout=10 ${token_hdr} ${url} 2>/dev/null`);
 	if (!fd) return null;
 	const raw = trim(fd.read('all')); fd.close();
 	if (!length(raw)) return null;
@@ -431,7 +431,7 @@ const methods = {
 			const max_tries = 3;
 			let exit_code = 1;
 			for (let attempt = 1; attempt <= max_tries; attempt++) {
-				exit_code = system(`wget -qO ${shellquote(tmp_path)} -c --tries=1 --timeout=30 ${shellquote(url)} 2>/dev/null`, 300000);
+				exit_code = system(`wget -4 -qO ${shellquote(tmp_path)} -c --tries=1 --timeout=30 ${shellquote(url)} 2>/dev/null`, 300000);
 				if (exit_code === 0) break;
 			}
 			return exit_code === 0 ? { result: true } : { result: false, error: 'download failed' };
