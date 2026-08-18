@@ -10,7 +10,7 @@
 'require validation';
 'require view';
 
-'require homeproxy as hp';
+
 'require tools.firewall as fwtool';
 'require tools.widgets as widgets';
 
