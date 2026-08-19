@@ -597,7 +597,7 @@ function renderNodeSettings(section, data, features, main_node) {
 	o.depends('type', 'hysteria');
 	o.modalonly = true;
 
-	o = s.option(form.Value, 'hysteria_revc_window', _('QUIC connection receive window'),
+	o = s.option(form.Value, 'hysteria_recv_window', _('QUIC connection receive window'),
 		_('The QUIC connection-level flow control window for receiving data.'));
 	o.datatype = 'uinteger';
 	o.depends('type', 'hysteria');

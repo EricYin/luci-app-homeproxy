@@ -207,7 +207,7 @@ function generate_outbound(node) {
 		auth: (node.hysteria_auth_type === 'base64') ? node.hysteria_auth_payload : null,
 		auth_str: (node.hysteria_auth_type === 'string') ? node.hysteria_auth_payload : null,
 		recv_window_conn: strToInt(node.hysteria_recv_window_conn),
-		recv_window: strToInt(node.hysteria_revc_window),
+		recv_window: strToInt(node.hysteria_recv_window),
 		disable_mtu_discovery: strToBool(node.hysteria_disable_mtu_discovery),
 		method: node.shadowsocks_encrypt_method,
 		plugin: node.shadowsocks_plugin,
