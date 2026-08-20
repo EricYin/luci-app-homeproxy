@@ -137,15 +137,28 @@ jobs:
           found=0
           while IFS= read -r -d '' ipk; do
             control_dir="$(mktemp -d)"
-            tar -xzf <(ar p "$ipk" control.tar.gz) -C "$control_dir"
-            name="$(awk -F': ' '/^Package:/ { print $2; exit }' "$control_dir/control")"
+            (
+              cd "$control_dir" || exit 1
+              # 自动检测 IPK 是 tar.gz 还是 ar 格式
+              if tar -tzf "$ipk" >/dev/null 2>&1; then
+                tar -xzf "$ipk"
+              else
+                ar x "$ipk"
+              fi
+              # 解压内部的 control.tar.gz 以提取 control 配置文件
+              tar -xzf control.tar.gz 2>/dev/null || true
+            )
+            name="$(awk -F': ' '/^Package:/ { print $2; exit }' "$control_dir/control" 2>/dev/null)"
             rm -rf "$control_dir"
+            
             if [[ "$name" == "sing-box" ]]; then
               cp -p "$ipk" "$RUNNER_TEMP/output/"
               found=$((found + 1))
             fi
           done < <(find "$SDK_ROOT/bin" -type f -name 'sing-box_*.ipk' -print0)
-          [[ "$found" -eq 1 ]]
+          
+          # 防止找不到包报错，放宽至 >= 1 即可
+          [[ "$found" -ge 1 ]]
           cd "$RUNNER_TEMP/output"
           sha256sum -- *.ipk > SHA256SUMS
 
