@@ -29,6 +29,7 @@ jobs:
     env:
       SDK_BASE_URL: https://downloads.immortalwrt.org/releases/24.10.6/targets/${{ matrix.sdk_path }}
       SDK_ARCHIVE_PREFIX: ${{ matrix.sdk_prefix }}
+      GOTOOLCHAIN: auto   # 全局生效，所有步骤都会继承
 
     steps:
       - name: Checkout
