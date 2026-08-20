@@ -110,7 +110,7 @@ default_prerm' > "$TEMP_DIR/pre-deinstall"
 		--script "post-install:$TEMP_DIR/post-install" \
 		--script "post-upgrade:$TEMP_DIR/post-upgrade" \
 		--script "pre-deinstall:$TEMP_DIR/pre-deinstall" \
-		--info "depends:libc $COMMON_DEPS_NOARCH sing-box>=1.14.0" \
+		--info "depends:libc $COMMON_DEPS_NOARCH sing-box>=1.14.0_alpha1" \
 		${APK_SIGN_KEY:+--sign-key "$APK_SIGN_KEY"} \
 		--files "$TEMP_PKG_DIR" \
 		--output "$TEMP_DIR/${PKG_NAME}_${PKG_VERSION}.apk"
@@ -149,9 +149,9 @@ with open(path, 'w') as f:
 PYEOF
 		python3 /tmp/hp_legacy_patch.py "$SUBSC_UC"
 		rm -f /tmp/hp_legacy_patch.py
-		IPK_DEPS="libc, ${COMMON_DEPS_NOARCH/ucode-mod-digest /}, sing-box (>=1.14.0)"
+		IPK_DEPS="libc, ${COMMON_DEPS_NOARCH/ucode-mod-digest /}, sing-box (>=1.14.0_alpha1)"
 	else
-		IPK_DEPS="libc, ${COMMON_DEPS_NOARCH// /, }, sing-box (>=1.14.0)"
+		IPK_DEPS="libc, ${COMMON_DEPS_NOARCH// /, }, sing-box (>=1.14.0_alpha1)"
 	fi
 
 	cat > "$TEMP_PKG_DIR/CONTROL/control" <<-EOF
