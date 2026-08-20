@@ -27,7 +27,7 @@ jobs:
             subtarget: '64'
 
     env:
-      SDK_BASE_URL: https://downloads.immortalwrt.org/snapshots/targets/${{ matrix.sdk_path }}
+      SDK_BASE_URL: https://downloads.immortalwrt.org/releases/24.10.6/targets/${{ matrix.sdk_path }}
       SDK_ARCHIVE_PREFIX: ${{ matrix.sdk_prefix }}
 
     steps:
