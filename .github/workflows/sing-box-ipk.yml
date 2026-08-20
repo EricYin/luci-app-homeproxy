@@ -43,6 +43,7 @@ jobs:
             libelf-dev libncurses-dev libssl-dev python3 python3-setuptools \
             rsync swig time unzip wget xsltproc zip zlib1g-dev zstd
 
+      # 融合点1：系统安装新版 Go（来自我的版本）
       - name: Install Go
         run: |
           wget https://go.dev/dl/go1.26.5.linux-amd64.tar.gz
@@ -83,28 +84,22 @@ jobs:
           echo "$SDK_SHA256  $archive" | sha256sum -c -
           mkdir -p "$RUNNER_TEMP/sdk-root"
           tar --zstd -xf "$archive" -C "$RUNNER_TEMP/sdk-root"
-          SDK_ROOT=$(find "$RUNNER_TEMP/sdk-root" -mindepth 1 -maxdepth 1 -type d -name 'immortalwrt-sdk-*' -print -quit)
-          echo "SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
-
-      - name: Override Go in SDK
-        run: |
-          echo "=== 强制替换 SDK 内部的 Go ==="
-          echo "SDK_ROOT=$SDK_ROOT"
-          rm -f "$SDK_ROOT/staging_dir/host/bin/go"
-          rm -f "$SDK_ROOT/staging_dir/host/bin/gofmt"
-          ln -s /usr/local/go/bin/go "$SDK_ROOT/staging_dir/host/bin/go"
-          ln -s /usr/local/go/bin/gofmt "$SDK_ROOT/staging_dir/host/bin/gofmt"
-          echo "SDK Go: $($SDK_ROOT/staging_dir/host/bin/go version)"
+          echo "SDK_ROOT=$(find "$RUNNER_TEMP/sdk-root" -mindepth 1 -maxdepth 1 -type d -name 'immortalwrt-sdk-*' -print -quit)" >> "$GITHUB_ENV"
 
       - name: Prepare package
         run: |
           rm -rf "$SDK_ROOT/package/sing-box"
           cp -a sing-box "$SDK_ROOT/package/sing-box"
 
-      - name: Update and install feeds
+      # 融合点2：替换 Golang feed（来自你的版本，使用 sbwml 的 26.x 分支）
+      - name: Replace OpenWrt Golang
         run: |
-          "$SDK_ROOT/scripts/feeds" update -a
-          "$SDK_ROOT/scripts/feeds" install -a
+          cd "$SDK_ROOT"
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+          rm -rf feeds/packages/lang/golang
+          git clone --depth=1 -b 26.x https://github.com/sbwml/packages_lang_golang feeds/packages/lang/golang
+          ./scripts/feeds install -f golang
 
       - name: Configure only Sing-Box
         run: |
@@ -114,16 +109,24 @@ jobs:
           CONFIG_TARGET_MULTI_PROFILE=y
           CONFIG_DEVEL=y
           CONFIG_BUILD_LOG=y
+          CONFIG_PACKAGE_golang=y
           CONFIG_PACKAGE_sing-box=m
           EOF
           make -C "$SDK_ROOT" defconfig
 
-      - name: Compile only Sing-Box
+      # 融合点3：调试步骤（来自你的版本）
+      - name: Check Golang package
         run: |
-          export PATH="$SDK_ROOT/staging_dir/host/bin:/usr/local/go/bin:$PATH"
-          echo "=== 编译环境 Go 版本检查 ==="
+          echo "=== Golang feed version ==="
+          grep -R "GO_DEFAULT_VERSION" "$SDK_ROOT/feeds/packages/lang/golang" || true
+          echo "=== System Go ==="
           which go
           go version
+          echo "=== SDK's staging dir go (if any) ==="
+          find "$SDK_ROOT/staging_dir" -name "go" -type f 2>/dev/null | xargs -r -n1 sh -c 'echo "$1" && $1 version' _ || true
+
+      - name: Compile only Sing-Box
+        run: |
           make -C "$SDK_ROOT" package/sing-box/clean
           make -C "$SDK_ROOT" -j"$(nproc)" package/sing-box/compile || \
             make -C "$SDK_ROOT" -j1 package/sing-box/compile V=s
