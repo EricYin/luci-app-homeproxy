@@ -97,12 +97,9 @@ jobs:
           CONFIG_DEVEL=y
           CONFIG_BUILD_LOG=y
           CONFIG_PACKAGE_sing-box=m
-          # CONFIG_USE_APK is not set
           EOF
 
           make -C "$SDK_ROOT" defconfig
-
-          grep -q '^# CONFIG_USE_APK is not set' "$SDK_ROOT/.config"
 
       - name: Compile only Sing-Box
         run: |
