@@ -1,4 +1,4 @@
-Name: Build Sing-Box (ipk)
+name: Build Sing-Box (ipk)
 
 on:
   workflow_dispatch:
