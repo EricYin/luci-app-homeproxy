@@ -17,12 +17,12 @@ jobs:
         include:
           - platform_name: ARM64
             sdk_path: qualcommax/ipq807x
-            sdk_prefix: immortalwrt-sdk-qualcommax-ipq60xx_
+            sdk_prefix: immortalwrt-sdk-24.10.6-qualcommax-ipq807x_gcc-13.3.0_
             target: qualcommax
             subtarget: ipq807x
           - platform_name: AMD64
             sdk_path: x86/64
-            sdk_prefix: immortalwrt-sdk-x86-64_
+            sdk_prefix: immortalwrt-sdk-24.10.6-x86-64_gcc-13.3.0_
             target: x86
             subtarget: '64'
 
