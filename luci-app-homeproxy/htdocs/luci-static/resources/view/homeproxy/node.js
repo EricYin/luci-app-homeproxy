@@ -1167,10 +1167,6 @@ function cleanupOrphanSubscriptionFiles() {
 
 	return L.resolveDefault(fs.list(dir), []).then((entries) => {
 		const known = {};
-		/* .subscriptions/*.json cache files are keyed by the persistent 'id'
-		 * option, NOT by the uci section name (which is an anonymous,
-		 * position-derived name that can be reassigned by UCI on reload -
-		 * see the 'id' option below for why). */
 		uci.sections('homeproxy', 'custom_profile', (s) => { if (s.id) known[s.id] = true; });
 
 		const jobs = [];
@@ -1482,29 +1478,12 @@ return view.extend({
 		ss.sortable = true;
 		ss.modaltitle = _('Edit Subscription');
 		ss.remove = function(section_id) {
-			/* The on-disk cache file is keyed by the persistent 'id' option,
-			 * not by section_id (which is only this section's current,
-			 * reload-volatile uci name - see the 'id' option below). Resolve
-			 * it before the section itself is deleted. */
 			const profile_id = uci.get(data[0], section_id, 'id') || section_id;
 			return L.resolveDefault(fs.remove(`/etc/homeproxy/custom/.subscriptions/${profile_id}.json`), null).then(() => {
 				return form.GridSection.prototype.remove.apply(this, [section_id]);
 			});
 		};
 
-		/* Anonymous uci sections (ss.anonymous = true, kept for a name-less
-		 * "Add" button) get an auto-generated name like "cfg0a1b2c" that UCI
-		 * recomputes from scratch every time it reloads the config file, and
-		 * that recomputed name can change whenever any custom_profile section
-		 * is added, removed, or reordered. Nothing about that name is stable.
-		 *
-		 * main_core_profile, the .subscriptions/*.json cache filename, and
-		 * every backend script all need to keep referring to the SAME
-		 * subscription across reloads, so they must not use that name
-		 * directly. This hidden 'id' option is generated once, the moment a
-		 * subscription is first opened for editing, and never changes again -
-		 * it is the actual persistent identifier used everywhere else.
-		 */
 		so = ss.option(form.Value, 'id', _('Internal ID'));
 		so.modalonly = true;
 		so.readonly = true;
@@ -1517,11 +1496,6 @@ return view.extend({
 			}
 			return id;
 		};
-		/* Purely internal bookkeeping - keep it out of the modal UI, but the
-		 * underlying <input> stays in the DOM (just visually hidden) so
-		 * load()/formvalue()/write() still work exactly as normal.
-		 * form.Value.prototype.render() returns a DOM node in some LuCI
-		 * versions and a Promise resolving to one in others - handle both. */
 		so.render = function() {
 			return Promise.resolve(form.Value.prototype.render.apply(this, arguments)).then((node) => {
 				if (node && node.style)
@@ -1560,9 +1534,6 @@ return view.extend({
 		so.modalonly = false;
 		so.onclick = function(ev, section_id) {
 			const label = uci.get(data[0], section_id, 'label') || section_id;
-			/* Backend scripts key everything (cache file, main_core_profile)
-			 * by the persistent 'id', not by this section's current uci name -
-			 * see the 'id' option above. */
 			const profile_id = uci.get(data[0], section_id, 'id') || section_id;
 
 			ui.showModal(_('Updating Subscription'), [

@@ -99,10 +99,6 @@ start_service() {
 		sync_cron_tag "${CONF}_restart_autosetup" ""
 	fi
 
-	# Core Config subscriptions (custom_profile) have their own independent
-	# auto-update schedule, kept fully separate from the regular node
-	# subscription auto-update below (which lives under "subscription" /
-	# update_crond.sh / update_subscriptions.uc). Do not merge these.
 	local has_core_sub=0
 	check_core_sub_url() {
 		local cfg="$1" url enabled
@@ -135,12 +131,6 @@ start_service() {
 				core_conf_path="$CUSTOM_DIR/${core_profile#file:}"
 				;;
 			sub:*)
-				# sub_id is the persistent 'id' option (see node.js), not a uci
-				# section name: custom_profile sections are anonymous, so their
-				# actual uci section name is reassigned by UCI on every reload
-				# and must never be relied on across invocations. Resolve it to
-				# whichever section currently holds that id before reading any
-				# of its other options.
 				local sub_id sub_prefer sub_section
 				sub_id="${core_profile#sub:}"
 				core_conf_path="$CUSTOM_DIR/.subscriptions/$sub_id.json"

@@ -240,14 +240,6 @@ return view.extend({
 			if (f.type === 'file')
 				core_profiles['file:' + f.name] = f.name;
 		uci.sections(data[0], 'custom_profile', (res) => {
-			/* Keyed by the persistent 'id' option (generated once when the
-			 * subscription is created in node.js), not by res['.name'] -
-			 * that uci name is anonymous and gets reassigned by UCI whenever
-			 * any custom_profile section is added/removed/reordered, so it
-			 * must never be baked into a persisted value like
-			 * main_core_profile. Fall back to '.name' only for a section
-			 * that has somehow never been opened/saved in the Subscription
-			 * editor yet (so it has no 'id' assigned). */
 			const profile_id = res.id || res['.name'];
 			core_profiles['sub:' + profile_id] = res.label || profile_id;
 		});

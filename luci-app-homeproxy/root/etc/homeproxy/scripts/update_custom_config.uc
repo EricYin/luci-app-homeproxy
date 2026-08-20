@@ -66,15 +66,6 @@ function parseUserinfo(headers) {
 	return ret;
 }
 
-/* profile_id here is the persistent 'id' option (see node.js), NOT a uci
- * section name. custom_profile sections are anonymous, so their uci section
- * name (e.g. "cfg0a1b2c") is recomputed by UCI on every config reload and
- * can silently change whenever any custom_profile section is added,
- * removed, or reordered. The 'id' option is generated once and never
- * changes, so it - and only it - is safe to use for cross-invocation
- * references such as main_core_profile and the .subscriptions/*.json cache
- * filename. Resolve it to whatever the section is actually named right now
- * before touching uci. */
 let profile_id = ARGV[0];
 if (isEmpty(profile_id)) {
 	const active = uci.get(uciconfig, 'config', 'main_core_profile');
