@@ -51,11 +51,7 @@ jobs:
           sudo rm -f /usr/bin/go
           sudo ln -s /usr/local/go/bin/go /usr/bin/go
           echo "/usr/local/go/bin" >> $GITHUB_PATH
-          echo "Go path:"
-          which go
-          echo "Go version:"
-          go version
-          /usr/bin/go version
+          echo "Go installed: $(/usr/bin/go version)"
 
       - name: Locate SDK
         id: sdk
@@ -87,7 +83,18 @@ jobs:
           echo "$SDK_SHA256  $archive" | sha256sum -c -
           mkdir -p "$RUNNER_TEMP/sdk-root"
           tar --zstd -xf "$archive" -C "$RUNNER_TEMP/sdk-root"
-          echo "SDK_ROOT=$(find "$RUNNER_TEMP/sdk-root" -mindepth 1 -maxdepth 1 -type d -name 'immortalwrt-sdk-*' -print -quit)" >> "$GITHUB_ENV"
+          SDK_ROOT=$(find "$RUNNER_TEMP/sdk-root" -mindepth 1 -maxdepth 1 -type d -name 'immortalwrt-sdk-*' -print -quit)
+          echo "SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+
+      - name: Override Go in SDK
+        run: |
+          echo "=== 强制替换 SDK 内部的 Go ==="
+          echo "SDK_ROOT=$SDK_ROOT"
+          rm -f "$SDK_ROOT/staging_dir/host/bin/go"
+          rm -f "$SDK_ROOT/staging_dir/host/bin/gofmt"
+          ln -s /usr/local/go/bin/go "$SDK_ROOT/staging_dir/host/bin/go"
+          ln -s /usr/local/go/bin/gofmt "$SDK_ROOT/staging_dir/host/bin/gofmt"
+          echo "SDK Go: $($SDK_ROOT/staging_dir/host/bin/go version)"
 
       - name: Prepare package
         run: |
@@ -111,16 +118,12 @@ jobs:
           EOF
           make -C "$SDK_ROOT" defconfig
 
-      - name: Verify Go before build
-        run: |
-          echo "Build Go:"
-          which go
-          go version
-          echo "System Go:"
-          /usr/bin/go version
-
       - name: Compile only Sing-Box
         run: |
+          export PATH="$SDK_ROOT/staging_dir/host/bin:/usr/local/go/bin:$PATH"
+          echo "=== 编译环境 Go 版本检查 ==="
+          which go
+          go version
           make -C "$SDK_ROOT" package/sing-box/clean
           make -C "$SDK_ROOT" -j"$(nproc)" package/sing-box/compile || \
             make -C "$SDK_ROOT" -j1 package/sing-box/compile V=s
