@@ -14,7 +14,7 @@ LUCI_DEPENDS:= \
 	+unzip
 
 
-LUCI_EXTRA_DEPENDS:=sing-box (>=1.14.0)
+LUCI_EXTRA_DEPENDS:=sing-box (>=1.14.0_alpha1)
 PKG_NAME:=luci-app-homeproxy
 
 define Package/luci-app-homeproxy/conffiles
@@ -28,3 +28,4 @@ define Package/luci-app-homeproxy/conffiles
 endef
 
 include $(TOPDIR)/feeds/luci/luci.mk
+
