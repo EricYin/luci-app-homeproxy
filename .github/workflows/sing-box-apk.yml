@@ -16,10 +16,10 @@ jobs:
       matrix:
         include:
           - platform_name: ARM64
-            sdk_path: qualcommax/ipq807x
-            sdk_prefix: immortalwrt-sdk-qualcommax/ipq807x_
+            sdk_path: qualcommax/ipq60xx
+            sdk_prefix: immortalwrt-sdk-qualcommax-ipq60xx_
             target: qualcommax
-            subtarget: ipq807x_
+            subtarget: ipq60xx
           - platform_name: AMD64
             sdk_path: x86/64
             sdk_prefix: immortalwrt-sdk-x86-64_
@@ -133,4 +133,3 @@ jobs:
           name: sing-box-apk-${{ matrix.platform_name }}
           path: ${{ runner.temp }}/output
           if-no-files-found: error
-
