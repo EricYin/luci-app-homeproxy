@@ -1,4 +1,4 @@
-name: Build Sing-Box
+name: Build Sing-Box (apk)
 
 on:
   workflow_dispatch:
