@@ -79,6 +79,7 @@ update_list() {
 		return 0
 	fi
 
+	chmod 644 "$tmpfile"
 	mv -f "$tmpfile" "$RESOURCES_DIR/$listtype.${listname##*.}"
 	printf '%s\n' "$list_ver" >"$RESOURCES_DIR/$listtype.ver"
 	log "[$listtype] Updated to version $list_ver."
