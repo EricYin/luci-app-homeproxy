@@ -31,10 +31,17 @@ jobs:
         run: |
           makefile='sing-box/Makefile'
 
-          upstream_tag="$(gh api 'repos/reF1nd/sing-box/tags?per_page=100' \
-            --jq '.[].name' \
+          upstream_tag="$(gh api 'repos/reF1nd/sing-box/releases?per_page=100' \
+            --jq '.[] | select(.prerelease == false and .draft == false) | .tag_name' \
             | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+-reF1nd(\.[0-9]+)?$' \
             | sort -V | tail -n1)"
+            
+          if [[ -z "$upstream_tag" ]]; then
+            upstream_tag="$(gh api 'repos/reF1nd/sing-box/tags?per_page=100' \
+              --jq '.[].name' \
+              | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+-reF1nd(\.[0-9]+)?$' \
+              | sort -V | tail -n1)"
+          fi
 
           if [[ -z "$upstream_tag" ]]; then
             echo "未找到 Sing-Box reF1nd 正式版 tag" >&2
