@@ -77,7 +77,7 @@ define Package/sing-box/config
 
 	config SING_BOX_BUILD_GRPC
 		bool "Build with gPRC support"
-		default n
+		default y
 
 	config SING_BOX_BUILD_GVISOR
 		bool "Build with gVisor support"
