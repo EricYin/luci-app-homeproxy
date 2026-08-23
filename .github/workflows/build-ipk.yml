@@ -63,11 +63,6 @@ jobs:
           curl -fLO "https://raw.githubusercontent.com/openwrt/openwrt/master/scripts/ipkg-build"
           sudo install -m0755 ipkg-build /usr/local/bin/ipkg-build
 
-      - name: Update dashboard & rule-set resources
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: sh luci-app-homeproxy/update-resources.sh
-
       - name: Generate release tag
         id: tag
         run: echo "release_tag=$(date -u +%Y.%m.%d)-r$(git rev-list --count HEAD)" >> $GITHUB_OUTPUT
