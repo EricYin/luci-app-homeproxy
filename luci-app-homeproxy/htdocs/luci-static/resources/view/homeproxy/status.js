@@ -195,7 +195,7 @@ function buildCoreContext() {
 
 		const updateBtn = registerLockable(E('button', {
 			'class': 'btn cbi-button cbi-button-action',
-			'click': async function() {
+			'click': ui.createHandlerFn(this, async function() {
 				if (busy) return;
 				setBusy(true);
 				remoteEl.textContent = _('Checking requirements...');
@@ -231,7 +231,7 @@ function buildCoreContext() {
 				remoteEl.style.color = 'green';
 				await refreshStatus();
 				setBusy(false);
-			}
+			})
 		}, [ label ]));
 
 		return E('div', { 'style': 'cbi-value-field' }, [ updateBtn, remoteEl ]);
@@ -242,7 +242,7 @@ function buildCoreContext() {
 
 		const checkBtn = registerLockable(E('button', {
 			'class': 'btn cbi-button',
-			'click': async function() {
+			'click': ui.createHandlerFn(this, async function() {
 				if (busy) return;
 				setBusy(true);
 				remoteEl.textContent = _('Checking...');
@@ -256,7 +256,7 @@ function buildCoreContext() {
 					remoteEl.textContent = _('Latest') + ': v' + ret.version + (ret.prerelease ? ' (pre-release)' : '');
 					remoteEl.style.color = 'darkorange';
 				}
-			}
+			})
 		}, [ _('Check latest') ]));
 
 		return E('div', { 'style': 'cbi-value-field' }, [ checkBtn, remoteEl ]);
@@ -265,7 +265,7 @@ function buildCoreContext() {
 	restoreBtn = registerLockable(E('button', {
 		'class': 'btn cbi-button cbi-button-negative',
 		'disabled': true,
-		'click': async function() {
+		'click': ui.createHandlerFn(this, async function() {
 			if (busy) return;
 			setBusy(true);
 			setRestoreMsg(_('Restoring firmware-shipped version...'), 'gray');
@@ -277,7 +277,7 @@ function buildCoreContext() {
 				setRestoreMsg(ret.error || _('Restore failed'), 'red');
 			}
 			setBusy(false);
-		}
+		})
 	}, [ _('Restore initial') ]));
 
 	refreshStatus();
