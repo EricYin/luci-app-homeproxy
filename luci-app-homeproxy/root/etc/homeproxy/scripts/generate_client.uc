@@ -127,13 +127,24 @@ function parse_dnsserver(server_addr, default_protocol) {
 	}
 }
 
+function node_out_tag(id, node) {
+	if (isEmpty(node))
+		node = uci.get_all(uciconfig, id) || {};
+
+	let label = trim(node.label ?? '');
+	if (!isEmpty(label))
+		label = replace(label, /[\r\n\t]+/g, ' ');
+
+	return (!isEmpty(label) ? label + '-' + id : ('cfg-' + id)) + '-out';
+}
+
 function generate_endpoint(node) {
 	if (type(node) !== 'object' || isEmpty(node))
 		return null;
 
 	const endpoint = {
 		type: node.type,
-		tag: 'cfg-' + node['.name'] + '-out',
+		tag: node_out_tag(node['.name'], node),
 		address: node.wireguard_local_address,
 		mtu: strToInt(node.wireguard_mtu),
 		private_key: node.wireguard_private_key,
@@ -166,7 +177,7 @@ function generate_outbound(node) {
 
 	const outbound = {
 		type: node.type,
-		tag: 'cfg-' + node['.name'] + '-out',
+		tag: node_out_tag(node['.name'], node),
 		routing_mark: strToInt(self_mark),
 
 		server: node.address,
@@ -478,7 +489,7 @@ if (!isEmpty(main_node)) {
 		push(config.outbounds, {
 			type: 'urltest',
 			tag: 'main-out',
-			outbounds: map(main_urltest_nodes, (k) => `cfg-${k}-out`),
+			outbounds: map(main_urltest_nodes, (k) => node_out_tag(k)),
 			interval: strToTime(main_urltest_interval),
 			tolerance: strToInt(main_urltest_tolerance),
 			idle_timeout: (strToInt(main_urltest_interval) > 1800) ? `${main_urltest_interval * 2}s` : null,
@@ -505,7 +516,7 @@ if (!isEmpty(main_node)) {
 		push(config.outbounds, {
 			type: 'urltest',
 			tag: 'main-udp-out',
-			outbounds: map(main_udp_urltest_nodes, (k) => `cfg-${k}-out`),
+			outbounds: map(main_udp_urltest_nodes, (k) => node_out_tag(k)),
 			interval: strToTime(main_udp_urltest_interval),
 			tolerance: strToInt(main_udp_urltest_tolerance),
 			idle_timeout: (strToInt(main_udp_urltest_interval) > 1800) ? `${main_udp_urltest_interval * 2}s` : null,
@@ -527,10 +538,10 @@ if (!isEmpty(main_node)) {
 		const urltest_node = uci.get_all(uciconfig, i) || {};
 		if (urltest_node.type === 'wireguard') {
 			push(config.endpoints, generate_endpoint(urltest_node));
-			config.endpoints[length(config.endpoints)-1].tag = 'cfg-' + i + '-out';
+			config.endpoints[length(config.endpoints)-1].tag = node_out_tag(i, urltest_node);
 		} else {
 			push(config.outbounds, generate_outbound(urltest_node));
-			config.outbounds[length(config.outbounds)-1].tag = 'cfg-' + i + '-out';
+			config.outbounds[length(config.outbounds)-1].tag = node_out_tag(i, urltest_node);
 		}
 	}
 }
@@ -576,7 +587,7 @@ if (!isEmpty(main_node)) {
 			outbound: 'direct-out'
 		});
 
-	if (dedicated_udp_node)
+	if (main_udp_node === 'urltest' || dedicated_udp_node)
 		push(config.route.rules, {
 			network: 'udp',
 			action: 'route',

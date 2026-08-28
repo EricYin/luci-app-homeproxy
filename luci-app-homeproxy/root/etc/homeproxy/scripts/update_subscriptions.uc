@@ -1056,10 +1056,12 @@ function main() {
 			const confHash = md5(sprintf('%J', config)),
 			      nameHash = md5(label);
 			config.label = label;
+			const idHash = md5(confHash + nameHash);
+			config.confhash = idHash;
 
 			if (filter_check(config.label))
 				log(sprintf('Skipping blacklist node: %s.', config.label));
-			else if (node_cache[groupHash][confHash] && node_cache[groupHash][nameHash])
+			else if (node_cache[groupHash][idHash])
 				log(sprintf('Skipping duplicate node: %s.', config.label));
 			else {
 				if (config.tls === '1' && allow_insecure === '1')
@@ -1070,8 +1072,7 @@ function main() {
 				config.grouphash = groupHash;
 				push(node_result, []);
 				push(node_result[length(node_result)-1], config);
-				node_cache[groupHash][confHash] = config;
-				node_cache[groupHash][nameHash] = config;
+				node_cache[groupHash][idHash] = config;
 
 				count++;
 			}
@@ -1122,9 +1123,11 @@ function main() {
 			if (node.isExisting)
 				return null;
 
-			const nameHash = md5(node.label);
-			uci.set(uciconfig, nameHash, 'node');
-			map(keys(node), (v) => uci.set(uciconfig, nameHash, v, node[v]));
+			const nodeId = node.confhash;
+			delete node.confhash;
+
+			uci.set(uciconfig, nodeId, 'node');
+			map(keys(node), (v) => uci.set(uciconfig, nodeId, v, node[v]));
 
 			added++;
 			log(sprintf('Adding node: %s.', node.label));

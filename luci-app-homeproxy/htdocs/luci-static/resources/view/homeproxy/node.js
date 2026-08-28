@@ -1221,6 +1221,12 @@ return view.extend({
 		}
 
 		m = new form.Map('homeproxy', _('Edit nodes'));
+		const saveMap = m.save;
+		m.save = function(cb, silent) {
+			return saveMap.call(this, () => Promise.resolve(
+				typeof cb === 'function' ? cb() : null
+			).then(() => hp.reconcileUrltestNodes(data[0])), silent);
+		};
 
 		s = m.section(form.NamedSection, 'subscription', 'homeproxy');
 
