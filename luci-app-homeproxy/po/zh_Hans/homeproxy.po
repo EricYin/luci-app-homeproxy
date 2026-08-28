@@ -1354,7 +1354,7 @@ msgstr "加载中"
 
 #: htdocs/luci-static/resources/view/homeproxy/node.js:1592
 msgid "Local"
-msgstr "本地"
+msgstr "默认"
 
 #: htdocs/luci-static/resources/view/homeproxy/node.js:896
 msgid "Local address"
