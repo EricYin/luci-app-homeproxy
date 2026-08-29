@@ -1353,7 +1353,7 @@ msgid "Loading"
 msgstr "加载中"
 
 #: htdocs/luci-static/resources/view/homeproxy/node.js:1592
-msgid "Local"
+msgid "Default"
 msgstr "默认"
 
 #: htdocs/luci-static/resources/view/homeproxy/node.js:896
