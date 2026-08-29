@@ -1316,7 +1316,7 @@ msgid "Loading"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/node.js:1592
-msgid "Local"
+msgid "Default"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/node.js:896
