@@ -531,23 +531,6 @@ return view.extend({
 		o.rmempty = false;
 		o.depends({'main_node': /^((?!core_only).)+$/});
 
-		o = s.taboption('routing', form.Flag, 'auto_restart', _('Auto Restart'),
-			_('Periodically restart the HomeProxy service.'));
-		o.default = '0';
-		o.rmempty = false;
-
-		o = s.taboption('routing', form.Value, 'auto_restart_cron', _('Restart schedule'),
-			_('Standard 5-field cron expression, e.g. <code>0 2 * * *</code> for every day at 2:00.'));
-		o.default = '0 2 * * *';
-		o.placeholder = '0 2 * * *';
-		o.depends('auto_restart', '1');
-		o.rmempty = false;
-		o.validate = function(section_id, value) {
-			if (value && value.trim().split(/\s+/).length !== 5)
-				return _('Expecting: a 5-field cron expression, e.g. %s').format('"0 2 * * *"');
-			return true;
-		};
-
 		o = s.taboption('dashboard', form.Value, 'dashboard_port', _('Listen port'));
 		o.default = '9096';
 		o.datatype = 'port';
