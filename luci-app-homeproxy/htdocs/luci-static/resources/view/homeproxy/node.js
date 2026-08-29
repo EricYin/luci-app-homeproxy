@@ -1589,7 +1589,7 @@ return view.extend({
 		so.default = 'local';
 		so.rmempty = false;
 		so.modalonly = true;
-		so.value('local', _('Local'));
+		so.value('local', _('Default'));
 		so.value('remote', _('Remote'));
 
 		s.tab('core_config_editor', _('Core Config Editor'));
