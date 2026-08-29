@@ -662,6 +662,14 @@ if (routing_mode === 'bypass_mainland_china') {
 	};
 }
 
+if (main_node === 'urltest' || main_udp_node === 'urltest') {
+	if (!config.experimental)
+		config.experimental = {};
+	config.experimental.clash_api = {
+		external_controller: `127.0.0.1:${dashboard_port + 1}`
+	};
+}
+
 if (dashboard_enabled)
 	config.services = [
 		{
