@@ -7,7 +7,8 @@ import { connect } from 'ubus';
 import { cursor } from 'uci';
 
 import {
-	isEmpty, parseURL, strToBool, strToInt, strToTime,
+	createNodeLabelRegistry, isEmpty, parseURL, reserveUniqueLabel,
+	strToBool, strToInt, strToTime,
 	removeBlankAttrs, validation, HP_DIR, RUN_DIR
 } from 'homeproxy';
 
@@ -24,6 +25,25 @@ const uciinfra = 'infra',
       ucicontrol = 'control';
 
 const ucinode = 'node';
+
+const outbound_tags = createNodeLabelRegistry();
+const node_outbound_tags = {};
+uci.foreach(uciconfig, ucinode, (cfg) => {
+	let label = trim(cfg.label ?? '');
+	if (!isEmpty(label))
+		label = replace(label, /[\r\n\t]+/g, ' ');
+
+	node_outbound_tags[cfg['.name']] = reserveUniqueLabel(
+		outbound_tags,
+		label,
+		`cfg-${cfg['.name']}-out`
+	);
+});
+
+function node_out_tag(id) {
+	return node_outbound_tags[id] || `cfg-${id}-out`;
+}
+
 
 const routing_mode = uci.get(uciconfig, ucimain, 'routing_mode') || 'bypass_mainland_china';
 
@@ -127,24 +147,13 @@ function parse_dnsserver(server_addr, default_protocol) {
 	}
 }
 
-function node_out_tag(id, node) {
-	if (isEmpty(node))
-		node = uci.get_all(uciconfig, id) || {};
-
-	let label = trim(node.label ?? '');
-	if (!isEmpty(label))
-		label = replace(label, /[\r\n\t]+/g, ' ');
-
-	return (!isEmpty(label) ? label + '-' + id : ('cfg-' + id)) + '-out';
-}
-
 function generate_endpoint(node) {
 	if (type(node) !== 'object' || isEmpty(node))
 		return null;
 
 	const endpoint = {
 		type: node.type,
-		tag: node_out_tag(node['.name'], node),
+		tag: node_out_tag(node['.name']),
 		address: node.wireguard_local_address,
 		mtu: strToInt(node.wireguard_mtu),
 		private_key: node.wireguard_private_key,
@@ -177,7 +186,7 @@ function generate_outbound(node) {
 
 	const outbound = {
 		type: node.type,
-		tag: node_out_tag(node['.name'], node),
+		tag: node_out_tag(node['.name']),
 		routing_mark: strToInt(self_mark),
 
 		server: node.address,
@@ -538,10 +547,10 @@ if (!isEmpty(main_node)) {
 		const urltest_node = uci.get_all(uciconfig, i) || {};
 		if (urltest_node.type === 'wireguard') {
 			push(config.endpoints, generate_endpoint(urltest_node));
-			config.endpoints[length(config.endpoints)-1].tag = node_out_tag(i, urltest_node);
+			config.endpoints[length(config.endpoints)-1].tag = node_out_tag(i);
 		} else {
 			push(config.outbounds, generate_outbound(urltest_node));
-			config.outbounds[length(config.outbounds)-1].tag = node_out_tag(i, urltest_node);
+			config.outbounds[length(config.outbounds)-1].tag = node_out_tag(i);
 		}
 	}
 }
