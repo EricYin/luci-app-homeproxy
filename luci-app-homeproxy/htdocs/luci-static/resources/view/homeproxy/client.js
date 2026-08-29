@@ -35,6 +35,12 @@ const callWriteDomainList = rpc.declare({
 	expect: { '': {} }
 });
 
+const callCurrentNode = rpc.declare({
+	object: 'luci.homeproxy',
+	method: 'current_node_get',
+	expect: { '': {} }
+});
+
 function getServiceStatus() {
 	return L.resolveDefault(callServiceList('homeproxy'), {}).then((res) => {
 		let isRunning = false;
@@ -45,13 +51,19 @@ function getServiceStatus() {
 	});
 }
 
-function renderStatus(isRunning, version) {
+function renderStatus(isRunning, version, currentNodeLabel, currentUdpNodeLabel) {
 	let spanTemp = '<em><span style="color:%s"><strong>%s (sing-box v%s) %s</strong></span></em>';
 	let renderHTML;
 	if (isRunning)
 		renderHTML = spanTemp.format('green', _('HomeProxy'), version, _('RUNNING'));
 	else
 		renderHTML = spanTemp.format('red', _('HomeProxy'), version, _('NOT RUNNING'));
+
+	if (isRunning && currentNodeLabel)
+		renderHTML += '<div><em><span style="color:%s"><strong>%s</strong></span></em></div>'.format('#1e90ff', '%h'.format(currentNodeLabel));
+
+	if (isRunning && currentUdpNodeLabel)
+		renderHTML += '<div><em><span style="color:%s"><strong>%s</strong></span></em></div>'.format('#1e90ff', '%h'.format(currentUdpNodeLabel));
 
 	return renderHTML;
 }
@@ -245,11 +257,33 @@ return view.extend({
 		});
 
 		function refreshStatus() {
-			return L.resolveDefault(getServiceStatus()).then((res) => {
-				let view = document.getElementById('service_status');
-				if (view) view.innerHTML = renderStatus(res, features.version);
+			return Promise.all([
+				L.resolveDefault(getServiceStatus(), false),
+				L.resolveDefault(callCurrentNode(), null)
+			]).then((res) => {
+				let isRunning = res[0],
+				    current = res[1],
+				    currentNodeLabel = null,
+				    currentUdpNodeLabel = null;
 
-				return res;
+				if (current?.mode === 'urltest') {
+					let active = current.active || {};
+					let nodeName = (active?.id && active.id !== 'urltest') ?
+						(proxy_nodes[active.id] || active.label || active.id) : _('Invalid node');
+					currentNodeLabel = _('URLTest: %s').format(nodeName);
+				}
+
+				if (current?.udp_mode === 'urltest') {
+					let udpActive = current.udp_active || {};
+					let udpNodeName = (udpActive?.id && udpActive.id !== 'urltest') ?
+						(proxy_nodes[udpActive.id] || udpActive.label || udpActive.id) : _('Invalid node');
+					currentUdpNodeLabel = _('UDP URLTest: %s').format(udpNodeName);
+				}
+
+				let view = document.getElementById('service_status');
+				if (view) view.innerHTML = renderStatus(isRunning, features.version, currentNodeLabel, currentUdpNodeLabel);
+
+				return isRunning;
 			});
 		}
 
