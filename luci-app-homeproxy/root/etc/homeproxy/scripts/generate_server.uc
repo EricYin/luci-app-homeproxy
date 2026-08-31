@@ -56,10 +56,10 @@ uci.foreach(uciconfig, uciserver, (cfg) => {
 			type: cfg.hysteria_obfs_type,
 			password: cfg.hysteria_obfs_password
 		} : cfg.hysteria_obfs_password,
-		recv_window_conn: strToInt(cfg.hysteria_recv_window_conn),
-		recv_window_client: strToInt(cfg.hysteria_recv_window_client),
-		max_conn_client: strToInt(cfg.hysteria_max_conn_client),
-		disable_mtu_discovery: strToBool(cfg.hysteria_disable_mtu_discovery),
+		stream_receive_window: strToInt(cfg.hysteria_recv_window_conn),
+		connection_receive_window: strToInt(cfg.hysteria_recv_window_client),
+		max_concurrent_streams: strToInt(cfg.hysteria_max_conn_client),
+		disable_path_mtu_discovery: strToBool(cfg.hysteria_disable_mtu_discovery),
 		ignore_client_bandwidth: strToBool(cfg.hysteria_ignore_client_bandwidth),
 		masquerade: cfg.hysteria_masquerade,
 
