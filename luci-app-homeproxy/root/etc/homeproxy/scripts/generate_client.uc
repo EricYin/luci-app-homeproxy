@@ -197,8 +197,6 @@ function generate_outbound(node) {
 		user: (node.type === 'ssh') ? node.username : null,
 		password: node.password,
 
-		override_address: node.override_address,
-		override_port: strToInt(node.override_port),
 		proxy_protocol: strToInt(node.proxy_protocol),
 		idle_session_check_interval: strToTime(node.anytls_idle_session_check_interval),
 		idle_session_timeout: strToTime(node.anytls_idle_session_timeout),
