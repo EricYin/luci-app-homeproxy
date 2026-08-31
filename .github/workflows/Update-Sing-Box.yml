@@ -1,4 +1,4 @@
-name: Sing-Box 正式版检查同步
+name: Sing-Box 检查同步
 
 on:
   workflow_dispatch:
@@ -51,7 +51,7 @@ jobs:
 
           if [[ "$current_version" == "$upstream_version" ]]; then
             changed=false
-            echo "Sing-Box 已是最新正式版：$upstream_version"
+            echo "Sing-Box 已是最新版：$upstream_version"
           fi
 
           {
