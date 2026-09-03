@@ -116,7 +116,7 @@ done
 
 mv -f "$tmp_dir/cache.db" "$CACHE_DIR/cache.db"
 chmod 644 "$CACHE_DIR/cache.db"
-log "[cache_db] generated cache.db using sing-box $singbox_tag"
+log "[cache_db] Generated cache.db using sing-box $singbox_tag"
 
 rm -rf "$tmp_dir"
 exit 0
