@@ -1,4 +1,4 @@
-name: Sing-Box 检查同步
+name: sing-box 版本检查同步
 
 on:
   workflow_dispatch:
@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   update:
-    name: 检查并更新 Sing-Box 核心
+    name: 检查并更新 sing-box 核心
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
@@ -31,10 +31,13 @@ jobs:
         env:
           PACKAGE_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
-          source .github/scripts/ci-common.sh
-          ci_sync_branch "$PACKAGE_BRANCH"
+          git fetch origin "$PACKAGE_BRANCH"
+          target="$(git rev-parse "origin/$PACKAGE_BRANCH")"
+          printf '同步仓库：%s，分支：%s，目标提交：%s\n' \
+            "$(pwd)" "$PACKAGE_BRANCH" "$target"
+          git reset --hard "origin/$PACKAGE_BRANCH"
 
-      - name: 检查 Sing-Box 上游版本
+      - name: 检查 sing-box 上游版本
         id: upstream
         run: |
           makefile='sing-box/Makefile'
@@ -51,7 +54,7 @@ jobs:
 
           if [[ "$current_version" == "$upstream_version" ]]; then
             changed=false
-            echo "Sing-Box 已是最新版：$upstream_version"
+            echo "sing-box 已是最新版：$upstream_version"
           fi
 
           {
@@ -60,7 +63,7 @@ jobs:
             echo "version=$upstream_version"
           } >> "$GITHUB_OUTPUT"
 
-      - name: 下载并校验 Sing-Box 源码
+      - name: 下载并校验 sing-box 源码
         if: steps.upstream.outputs.changed == 'true'
         id: source
         env:
@@ -76,7 +79,7 @@ jobs:
 
           echo "hash=$(sha256sum "$archive" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
-      - name: 更新 Sing-Box 软件包元数据
+      - name: 更新 sing-box 软件包元数据
         if: steps.upstream.outputs.changed == 'true'
         env:
           SOURCE_HASH: ${{ steps.source.outputs.hash }}
@@ -89,7 +92,7 @@ jobs:
           elif [[ "$UPSTREAM_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             package_version="$UPSTREAM_VERSION"
           else
-            printf '无法转换 Sing-Box 版本号：%s\n' "$UPSTREAM_VERSION" >&2
+            printf '无法转换 sing-box 版本号：%s\n' "$UPSTREAM_VERSION" >&2
             exit 1
           fi
 
@@ -107,15 +110,31 @@ jobs:
 
           git diff --check
 
-      - name: 提交 Sing-Box 更新
+      - name: 提交 sing-box 更新
         if: steps.upstream.outputs.changed == 'true'
         env:
           PACKAGE_BRANCH: ${{ github.event.repository.default_branch }}
           UPSTREAM_VERSION: ${{ steps.upstream.outputs.version }}
         run: |
-          source .github/scripts/ci-common.sh
+          message="chore: 更新 sing-box 至 ${UPSTREAM_VERSION}-r1"
 
-          ci_commit_and_push \
-            "$PACKAGE_BRANCH" \
-            "chore: 更新 Sing-Box 至 ${UPSTREAM_VERSION}-r1" \
-            sing-box/Makefile
+          local_head="$(git rev-parse HEAD)"
+          git fetch origin "$PACKAGE_BRANCH"
+          remote_head="$(git rev-parse "origin/$PACKAGE_BRANCH")"
+          if [[ "$local_head" != "$remote_head" ]]; then
+            printf '远端分支已更新，为避免提交冲突，本次任务停止：%s -> %s\n' \
+              "$local_head" "$remote_head" >&2
+            exit 75
+          fi
+
+          git add -- sing-box/Makefile
+          if git diff --cached --quiet; then
+            printf '没有需要提交的变更。\n'
+            exit 0
+          fi
+          git diff --cached --check
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "$message"
+          git push origin "HEAD:$PACKAGE_BRANCH"
