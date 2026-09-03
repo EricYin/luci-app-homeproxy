@@ -12,7 +12,7 @@ log() {
 }
 
 skip() {
-	log "[$1] 跳过 $2"
+	log "[$1] Skip: $2"
 }
 
 curl_get() {
@@ -49,24 +49,24 @@ update_list() {
 	listname="$4"
 
 	list_info="$(curl_get "$GH_API/repos/$listrepo/commits?sha=$listref&path=$listname&per_page=1")"
-	[ -n "$list_info" ] || { skip "$listtype" "无法访问 GitHub API，保留仓库内的版本"; return 0; }
+	[ -n "$list_info" ] || { skip "$listtype" "Failed to access GitHub API, keeping local version"; return 0; }
 
 	list_sha="$(printf '%s' "$list_info" | json_first_sha)"
 	list_ver="$(printf '%s' "$list_info" | json_first_message | grep -Eo '[0-9-]+' | tr -d '-' | head -n1)"
-	[ -n "$list_sha" ] && [ -n "$list_ver" ] || { skip "$listtype" "未能解析最新版本号，保留仓库内的版本"; return 0; }
+	[ -n "$list_sha" ] && [ -n "$list_ver" ] || { skip "$listtype" "Failed to parse latest version, keeping local version"; return 0; }
 
 	local_ver="$(cat "$RESOURCES_DIR/$listtype.ver" 2>"/dev/null")"
-	[ "$local_ver" != "$list_ver" ] || { skip "$listtype" "已是最新版本 $list_ver"; return 0; }
+	[ "$local_ver" != "$list_ver" ] || { skip "$listtype" "Already up to date (version $list_ver)"; return 0; }
 
 	tmpfile="$(mktemp)"
 	curl -fsSL --connect-timeout 8 --max-time 30 --retry 2 --retry-delay 2 \
 		"https://fastly.jsdelivr.net/gh/$listrepo@$list_sha/$listname" -o "$tmpfile"
-	[ -s "$tmpfile" ] || { rm -f "$tmpfile"; skip "$listtype" "下载失败，保留仓库内的版本"; return 0; }
+	[ -s "$tmpfile" ] || { rm -f "$tmpfile"; skip "$listtype" "Download failed, keeping local version"; return 0; }
 
 	chmod 644 "$tmpfile"
 	mv -f "$tmpfile" "$RESOURCES_DIR/$listtype.${listname##*.}"
 	printf '%s\n' "$list_ver" >"$RESOURCES_DIR/$listtype.ver"
-	log "[$listtype] 已更新到版本 $list_ver"
+	log "[$listtype] Updated to version $list_ver"
 
 	if [ "$listtype" = "china_list" ]; then
 		sed -i -e 's/full://g' -e '/:/d' "$RESOURCES_DIR/china_list.txt"
@@ -78,15 +78,15 @@ update_dashboard() {
 	branch="gh-pages"
 
 	commit_info="$(curl_get "$GH_API/repos/$repo/commits?sha=$branch&per_page=1")"
-	[ -n "$commit_info" ] || { skip "dashboard" "无法访问 GitHub API，保留仓库内的版本"; return 0; }
+	[ -n "$commit_info" ] || { skip "dashboard" "Failed to access GitHub API, keeping local version"; return 0; }
 
 	commit_sha="$(printf '%s' "$commit_info" | json_first_sha)"
-	[ -n "$commit_sha" ] || { skip "dashboard" "未能解析最新版本号，保留仓库内的版本"; return 0; }
+	[ -n "$commit_sha" ] || { skip "dashboard" "Failed to parse latest version, keeping local version"; return 0; }
 	dashboard_ver="$(printf '%.7s' "$commit_sha")"
 
 	local_ver="$(cat "$RESOURCES_DIR/dashboard.ver" 2>"/dev/null")"
 	if [ "$local_ver" = "$dashboard_ver" ] && [ -s "$DASHBOARD_DIR/index.html" ]; then
-		skip "dashboard" "已是最新版本 $dashboard_ver"
+		skip "dashboard" "Already up to date (version $dashboard_ver)"
 		return 0
 	fi
 
@@ -97,20 +97,20 @@ update_dashboard() {
 		"https://codeload.github.com/$repo/zip/$commit_sha" -o "$tmp_zip"
 	if [ ! -s "$tmp_zip" ]; then
 		rm -f "$tmp_zip"; rm -rf "$tmp_extract"
-		skip "dashboard" "下载失败，保留仓库内的版本"
+		skip "dashboard" "Download failed, keeping local version"
 		return 0
 	fi
 
 	if ! unzip -q -o "$tmp_zip" -d "$tmp_extract"; then
 		rm -f "$tmp_zip"; rm -rf "$tmp_extract"
-		skip "dashboard" "解压失败，保留仓库内的版本"
+		skip "dashboard" "Extraction failed, keeping local version"
 		return 0
 	fi
 
 	index_file="$(find "$tmp_extract" -maxdepth 2 -name 'index.html' | head -n1)"
 	if [ -z "$index_file" ]; then
 		rm -f "$tmp_zip"; rm -rf "$tmp_extract"
-		skip "dashboard" "压缩包内容异常，保留仓库内的版本"
+		skip "dashboard" "Invalid archive contents, keeping local version"
 		return 0
 	fi
 	src_dir="$(dirname "$index_file")"
@@ -122,7 +122,7 @@ update_dashboard() {
 	find "$DASHBOARD_DIR" -type f -exec chmod 644 {} \;
 
 	printf '%s\n' "$dashboard_ver" >"$RESOURCES_DIR/dashboard.ver"
-	log "[dashboard] 已更新到版本 $dashboard_ver"
+	log "[dashboard] Updated to version $dashboard_ver"
 
 	rm -f "$tmp_zip"
 	rm -rf "$tmp_extract"
@@ -136,5 +136,5 @@ update_dashboard
 
 sh "$SCRIPT_DIR/update-cache.sh"
 
-log "全部检查完成。"
+log "all checks completed"
 exit 0
