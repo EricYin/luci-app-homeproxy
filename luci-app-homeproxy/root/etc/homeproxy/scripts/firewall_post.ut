@@ -638,10 +638,10 @@ chain homeproxy_mangle_tun {
 }
 
 chain mangle_prerouting {
-	meta nfproto { {{ (ipv6_support === '1') ? 'ipv4, ipv6' : 'ipv4' }} } meta l4proto { {{ (proxy_mode === 'tun') ? 'tcp, udp' : 'udp' }} } jump homeproxy_mangle_lanac
+	meta nfproto { {{ (ipv6_support === '1') ? 'ipv4, ipv6' : 'ipv4' }} } meta l4proto { {{ (proxy_mode === 'tun') ? ((outbound_udp_node !== 'nil') ? 'tcp, udp' : 'tcp') : 'udp' }} } jump homeproxy_mangle_lanac
 }
 
 chain mangle_output {
-	meta nfproto { {{ (ipv6_support === '1') ? 'ipv4, ipv6' : 'ipv4' }} } meta l4proto { {{ (proxy_mode === 'tun') ? 'tcp, udp' : 'udp' }} } jump homeproxy_mangle_tun
+	meta nfproto { {{ (ipv6_support === '1') ? 'ipv4, ipv6' : 'ipv4' }} } meta l4proto { {{ (proxy_mode === 'tun') ? ((outbound_udp_node !== 'nil') ? 'tcp, udp' : 'tcp') : 'udp' }} } jump homeproxy_mangle_tun
 }
 {% endif %}
