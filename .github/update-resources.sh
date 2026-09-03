@@ -11,6 +11,10 @@ log() {
 	printf '[homeproxy] %s\n' "$*"
 }
 
+skip() {
+	log "[$1] 跳过（$2）。"
+}
+
 curl_get() {
 	if [ -n "$GITHUB_TOKEN" ]; then
 		curl -fsSL --connect-timeout 8 --max-time 20 --retry 2 --retry-delay 2 \
@@ -36,14 +40,6 @@ json_first_message() {
 	fi
 }
 
-if ! command -v curl >"/dev/null" 2>&1; then
-	log "未检测到 curl，跳过资源更新，使用仓库内已提交的版本。"
-	exit 0
-fi
-if ! command -v unzip >"/dev/null" 2>&1; then
-	log "未检测到 unzip，面板（dashboard）更新将被跳过，使用仓库内已提交的版本。"
-fi
-
 mkdir -p "$RESOURCES_DIR" "$DASHBOARD_DIR" 2>"/dev/null"
 
 update_list() {
@@ -53,32 +49,19 @@ update_list() {
 	listname="$4"
 
 	list_info="$(curl_get "$GH_API/repos/$listrepo/commits?sha=$listref&path=$listname&per_page=1")"
-	if [ -z "$list_info" ]; then
-		log "[$listtype] 无法访问 GitHub API，保留仓库内的兜底版本。"
-		return 0
-	fi
+	[ -n "$list_info" ] || { skip "$listtype" "无法访问 GitHub API，保留仓库内的版本"; return 0; }
 
 	list_sha="$(printf '%s' "$list_info" | json_first_sha)"
 	list_ver="$(printf '%s' "$list_info" | json_first_message | grep -Eo '[0-9-]+' | tr -d '-' | head -n1)"
-	if [ -z "$list_sha" ] || [ -z "$list_ver" ]; then
-		log "[$listtype] 未能解析最新版本号，保留仓库内的兜底版本。"
-		return 0
-	fi
+	[ -n "$list_sha" ] && [ -n "$list_ver" ] || { skip "$listtype" "未能解析最新版本号，保留仓库内的版本"; return 0; }
 
 	local_ver="$(cat "$RESOURCES_DIR/$listtype.ver" 2>"/dev/null")"
-	if [ "$local_ver" = "$list_ver" ]; then
-		log "[$listtype] 已是最新版本 ($list_ver)，跳过。"
-		return 0
-	fi
+	[ "$local_ver" != "$list_ver" ] || { skip "$listtype" "已是最新版本 ($list_ver)"; return 0; }
 
 	tmpfile="$(mktemp)"
-	if ! curl -fsSL --connect-timeout 8 --max-time 30 --retry 2 --retry-delay 2 \
-		"https://fastly.jsdelivr.net/gh/$listrepo@$list_sha/$listname" -o "$tmpfile" \
-		|| [ ! -s "$tmpfile" ]; then
-		log "[$listtype] 下载失败，保留仓库内的兜底版本。"
-		rm -f "$tmpfile"
-		return 0
-	fi
+	curl -fsSL --connect-timeout 8 --max-time 30 --retry 2 --retry-delay 2 \
+		"https://fastly.jsdelivr.net/gh/$listrepo@$list_sha/$listname" -o "$tmpfile"
+	[ -s "$tmpfile" ] || { rm -f "$tmpfile"; skip "$listtype" "下载失败，保留仓库内的版本"; return 0; }
 
 	chmod 644 "$tmpfile"
 	mv -f "$tmpfile" "$RESOURCES_DIR/$listtype.${listname##*.}"
@@ -91,56 +74,43 @@ update_list() {
 }
 
 update_dashboard() {
-	if ! command -v unzip >"/dev/null" 2>&1; then
-		return 0
-	fi
-
 	repo="SagerNet/sing-box-dashboard"
 	branch="gh-pages"
 
 	commit_info="$(curl_get "$GH_API/repos/$repo/commits?sha=$branch&per_page=1")"
-	if [ -z "$commit_info" ]; then
-		log "[dashboard] 无法访问 GitHub API，保留仓库内的兜底版本。"
-		return 0
-	fi
+	[ -n "$commit_info" ] || { skip "dashboard" "无法访问 GitHub API，保留仓库内的版本"; return 0; }
 
 	commit_sha="$(printf '%s' "$commit_info" | json_first_sha)"
-	if [ -z "$commit_sha" ]; then
-		log "[dashboard] 未能解析最新版本号，保留仓库内的兜底版本。"
-		return 0
-	fi
+	[ -n "$commit_sha" ] || { skip "dashboard" "未能解析最新版本号，保留仓库内的版本"; return 0; }
 	dashboard_ver="$(printf '%.7s' "$commit_sha")"
 
 	local_ver="$(cat "$RESOURCES_DIR/dashboard.ver" 2>"/dev/null")"
 	if [ "$local_ver" = "$dashboard_ver" ] && [ -s "$DASHBOARD_DIR/index.html" ]; then
-		log "[dashboard] 已是最新版本 ($dashboard_ver)，跳过。"
+		skip "dashboard" "已是最新版本 ($dashboard_ver)"
 		return 0
 	fi
 
 	tmp_zip="$(mktemp)"
 	tmp_extract="$(mktemp -d)"
 
-	if ! curl -fsSL --connect-timeout 8 --max-time 60 --retry 2 --retry-delay 2 \
-		"https://codeload.github.com/$repo/zip/$commit_sha" -o "$tmp_zip" \
-		|| [ ! -s "$tmp_zip" ]; then
-		log "[dashboard] 下载失败，保留仓库内的兜底版本。"
-		rm -f "$tmp_zip"
-		rm -rf "$tmp_extract"
+	curl -fsSL --connect-timeout 8 --max-time 60 --retry 2 --retry-delay 2 \
+		"https://codeload.github.com/$repo/zip/$commit_sha" -o "$tmp_zip"
+	if [ ! -s "$tmp_zip" ]; then
+		rm -f "$tmp_zip"; rm -rf "$tmp_extract"
+		skip "dashboard" "下载失败，保留仓库内的版本"
 		return 0
 	fi
 
 	if ! unzip -q -o "$tmp_zip" -d "$tmp_extract"; then
-		log "[dashboard] 解压失败，保留仓库内的兜底版本。"
-		rm -f "$tmp_zip"
-		rm -rf "$tmp_extract"
+		rm -f "$tmp_zip"; rm -rf "$tmp_extract"
+		skip "dashboard" "解压失败，保留仓库内的版本"
 		return 0
 	fi
 
 	index_file="$(find "$tmp_extract" -maxdepth 2 -name 'index.html' | head -n1)"
 	if [ -z "$index_file" ]; then
-		log "[dashboard] 压缩包内容异常（找不到 index.html），保留仓库内的兜底版本。"
-		rm -f "$tmp_zip"
-		rm -rf "$tmp_extract"
+		rm -f "$tmp_zip"; rm -rf "$tmp_extract"
+		skip "dashboard" "压缩包内容异常，保留仓库内的版本"
 		return 0
 	fi
 	src_dir="$(dirname "$index_file")"
@@ -168,4 +138,3 @@ sh "$SCRIPT_DIR/update-cache.sh"
 
 log "全部检查完成。"
 exit 0
-
