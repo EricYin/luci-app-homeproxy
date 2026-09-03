@@ -11,7 +11,7 @@ log() {
 }
 
 skip() {
-	log "[cache_db] 跳过（$1），保留仓库内的cache_db"
+	log "[cache_db] 跳过 $1"
 	exit 0
 }
 
@@ -27,14 +27,14 @@ curl_get() {
 mkdir -p "$CACHE_DIR" 2>"/dev/null"
 
 release_info="$(curl_get "$GH_API/repos/SagerNet/sing-box/releases?per_page=30")"
-[ -n "$release_info" ] || skip "无法访问 GitHub API"
+[ -n "$release_info" ] || skip "无法访问 GitHub API，保留仓库内的cache.db"
 
 singbox_tag=""
 if command -v jq >"/dev/null" 2>&1; then
 	singbox_tag="$(printf '%s' "$release_info" \
 		| jq -r '[.[] | select(.draft == false and .prerelease == false)][0].tag_name // empty' 2>"/dev/null")"
 fi
-[ -n "$singbox_tag" ] || skip "未能解析 sing-box 版本"
+[ -n "$singbox_tag" ] || skip "未能解析 sing-box 最新版本号，保留仓库内的cache.db"
 
 singbox_ver_num="${singbox_tag#v}"
 tmp_dir="$(mktemp -d)"
@@ -42,12 +42,12 @@ tmp_dir="$(mktemp -d)"
 curl -fsSL --connect-timeout 8 --max-time 60 --retry 2 --retry-delay 2 \
 	"https://github.com/SagerNet/sing-box/releases/download/$singbox_tag/sing-box-$singbox_ver_num-linux-amd64.tar.gz" \
 	-o "$tmp_dir/sing-box.tar.gz"
-[ -s "$tmp_dir/sing-box.tar.gz" ] || { rm -rf "$tmp_dir"; skip "sing-box 二进制下载失败"; }
+[ -s "$tmp_dir/sing-box.tar.gz" ] || { rm -rf "$tmp_dir"; skip "sing-box 二进制下载失败，保留仓库内的cache.db"; }
 
-tar -xzf "$tmp_dir/sing-box.tar.gz" -C "$tmp_dir" || { rm -rf "$tmp_dir"; skip "sing-box 压缩包解压失败"; }
+tar -xzf "$tmp_dir/sing-box.tar.gz" -C "$tmp_dir" || { rm -rf "$tmp_dir"; skip "sing-box 压缩包解压失败，保留仓库内的cache.db"; }
 
 singbox_bin="$tmp_dir/sing-box-$singbox_ver_num-linux-amd64/sing-box"
-[ -x "$singbox_bin" ] || { rm -rf "$tmp_dir"; skip "未找到 sing-box 可执行文件"; }
+[ -x "$singbox_bin" ] || { rm -rf "$tmp_dir"; skip "未找到 sing-box 可执行文件，保留仓库内的cache.db"; }
 
 cat >"$tmp_dir/config.json" <<-'EOF'
 {
@@ -112,11 +112,11 @@ done
 [ -n "$singbox_pid" ] && kill "$singbox_pid" 2>"/dev/null"
 [ -n "$singbox_pid" ] && wait "$singbox_pid" 2>"/dev/null"
 
-[ -s "$tmp_dir/cache.db" ] || { rm -rf "$tmp_dir"; skip "cache.db 未生成"; }
+[ -s "$tmp_dir/cache.db" ] || { rm -rf "$tmp_dir"; skip "cache.db 未生成，保留仓库内的cache.db"; }
 
 mv -f "$tmp_dir/cache.db" "$CACHE_DIR/cache.db"
 chmod 644 "$CACHE_DIR/cache.db"
-log "[cache_db] 使用 sing-box $singbox_tag 生成 cache.db。"
+log "[cache_db] 使用 sing-box $singbox_tag 生成 cache.db"
 
 rm -rf "$tmp_dir"
 exit 0
