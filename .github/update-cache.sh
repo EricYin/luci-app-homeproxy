@@ -24,9 +24,6 @@ curl_get() {
 	fi
 }
 
-command -v curl >"/dev/null" 2>&1 || skip "未检测到 curl"
-command -v tar >"/dev/null" 2>&1 || skip "未检测到 tar"
-
 mkdir -p "$CACHE_DIR" 2>"/dev/null"
 
 release_info="$(curl_get "$GH_API/repos/SagerNet/sing-box/releases?per_page=30")"
