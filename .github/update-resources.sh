@@ -66,7 +66,7 @@ update_list() {
 	chmod 644 "$tmpfile"
 	mv -f "$tmpfile" "$RESOURCES_DIR/$listtype.${listname##*.}"
 	printf '%s\n' "$list_ver" >"$RESOURCES_DIR/$listtype.ver"
-	log "[$listtype] 已更新到版本 $list_ver。"
+	log "[$listtype] 已更新到版本 $list_ver"
 
 	if [ "$listtype" = "china_list" ]; then
 		sed -i -e 's/full://g' -e '/:/d' "$RESOURCES_DIR/china_list.txt"
@@ -122,7 +122,7 @@ update_dashboard() {
 	find "$DASHBOARD_DIR" -type f -exec chmod 644 {} \;
 
 	printf '%s\n' "$dashboard_ver" >"$RESOURCES_DIR/dashboard.ver"
-	log "[dashboard] 已更新到版本 $dashboard_ver。"
+	log "[dashboard] 已更新到版本 $dashboard_ver"
 
 	rm -f "$tmp_zip"
 	rm -rf "$tmp_extract"
