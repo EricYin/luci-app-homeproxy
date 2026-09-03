@@ -136,5 +136,5 @@ update_dashboard
 
 sh "$SCRIPT_DIR/update-cache.sh"
 
-log "all checks completed"
+log "All checks completed"
 exit 0
