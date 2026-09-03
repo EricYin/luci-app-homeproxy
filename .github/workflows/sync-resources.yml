@@ -1,4 +1,4 @@
-name: homeproxy 资源更新
+name: HomeProxy 资源检查同步
 
 on:
   schedule:
