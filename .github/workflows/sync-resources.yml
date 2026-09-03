@@ -1,4 +1,4 @@
-name: Sync Resources & Dashboard
+name: homeproxy 资源更新
 
 on:
   schedule:
