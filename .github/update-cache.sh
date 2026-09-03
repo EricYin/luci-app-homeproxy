@@ -11,7 +11,7 @@ log() {
 }
 
 skip() {
-	log "[cache_db] 跳过（$1），保留仓库内的兜底版本。"
+	log "[cache_db] 跳过（$1），保留仓库内的cache_db"
 	exit 0
 }
 
@@ -34,7 +34,7 @@ if command -v jq >"/dev/null" 2>&1; then
 	singbox_tag="$(printf '%s' "$release_info" \
 		| jq -r '[.[] | select(.draft == false and .prerelease == false)][0].tag_name // empty' 2>"/dev/null")"
 fi
-[ -n "$singbox_tag" ] || skip "未能解析 sing-box 最新版本号"
+[ -n "$singbox_tag" ] || skip "未能解析 sing-box 版本"
 
 singbox_ver_num="${singbox_tag#v}"
 tmp_dir="$(mktemp -d)"
