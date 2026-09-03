@@ -56,7 +56,7 @@ update_list() {
 	[ -n "$list_sha" ] && [ -n "$list_ver" ] || { skip "$listtype" "未能解析最新版本号，保留仓库内的版本"; return 0; }
 
 	local_ver="$(cat "$RESOURCES_DIR/$listtype.ver" 2>"/dev/null")"
-	[ "$local_ver" != "$list_ver" ] || { skip "$listtype" "已是最新版本 ($list_ver)"; return 0; }
+	[ "$local_ver" != "$list_ver" ] || { skip "$listtype" "已是最新版本 $list_ver"; return 0; }
 
 	tmpfile="$(mktemp)"
 	curl -fsSL --connect-timeout 8 --max-time 30 --retry 2 --retry-delay 2 \
@@ -86,7 +86,7 @@ update_dashboard() {
 
 	local_ver="$(cat "$RESOURCES_DIR/dashboard.ver" 2>"/dev/null")"
 	if [ "$local_ver" = "$dashboard_ver" ] && [ -s "$DASHBOARD_DIR/index.html" ]; then
-		skip "dashboard" "已是最新版本 ($dashboard_ver)"
+		skip "dashboard" "已是最新版本 $dashboard_ver"
 		return 0
 	fi
 
