@@ -233,5 +233,15 @@ uci.foreach(uciconfig, uciserver, (cfg) => {
 		uci.delete(uciconfig, cfg['.name'], 'domain_strategy');
 });
 
+/* "Core only" mode was removed; clean up any leftover state from it. */
+if (uci.get(uciconfig, ucimain, 'main_node') === 'core_only')
+	uci.set(uciconfig, ucimain, 'main_node', 'nil');
+if (uci.get(uciconfig, ucimain, 'main_core_profile') != null)
+	uci.delete(uciconfig, ucimain, 'main_core_profile');
+uci.foreach(uciconfig, 'custom_profile', (cfg) => {
+	uci.delete(uciconfig, cfg['.name']);
+});
+system('rm -rf "/etc/homeproxy/custom"');
+
 if (!isEmpty(uci.changes(uciconfig)))
 	uci.commit(uciconfig);

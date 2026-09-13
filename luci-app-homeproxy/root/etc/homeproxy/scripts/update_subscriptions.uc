@@ -196,6 +196,7 @@ function apply_transport_opts(config, proxy) {
 	let grpc_opts = proxy['grpc-opts'] || {};
 	let http_opts = proxy['http-opts'] || proxy['h2-opts'] || {};
 	let httpupgrade_opts = proxy['http-upgrade-opts'] || {};
+	let xhttp_opts = proxy['xhttp-opts'] || proxy['splithttp-opts'] || {};
 
 	switch (network) {
 	case 'ws':
@@ -220,6 +221,13 @@ function apply_transport_opts(config, proxy) {
 		config.transport = 'httpupgrade';
 		config.httpupgrade_host = get_header_host(httpupgrade_opts.headers) || httpupgrade_opts.host;
 		config.http_path = normalize_first(httpupgrade_opts.path);
+		break;
+	case 'xhttp':
+	case 'splithttp':
+		config.transport = 'xhttp';
+		config.xhttp_host = get_header_host(xhttp_opts.headers) || to_string(xhttp_opts.host);
+		config.xhttp_path = normalize_first(xhttp_opts.path);
+		config.xhttp_mode = xhttp_opts.mode ? to_string(xhttp_opts.mode) : null;
 		break;
 	}
 }
@@ -336,6 +344,7 @@ function parse_mihomo_proxy(proxy) {
 			port: to_string(proxy.port),
 			uuid: proxy.uuid,
 			vless_flow: proxy.flow,
+			vless_encryption: (has_value(proxy.encryption) && proxy.encryption !== 'none') ? to_string(proxy.encryption) : null,
 			packet_encoding: proxy['packet-encoding'],
 			tls: (proxy.tls === true || proxy['reality-opts']) ? '1' : '0',
 			tls_sni,
@@ -897,7 +906,8 @@ function parse_uri(uri) {
 				tls_reality_public_key: params.pbk ? urldecode(params.pbk) : null,
 				tls_reality_short_id: params.sid,
 				tls_utls: sing_features.with_utls ? params.fp : null,
-				vless_flow: (params.security in ['tls', 'reality']) ? params.flow : null
+				vless_flow: (params.security in ['tls', 'reality']) ? params.flow : null,
+				vless_encryption: (has_value(params.encryption) && params.encryption !== 'none') ? urldecode(params.encryption) : null
 			};
 			switch(params.type) {
 			case 'grpc':
@@ -922,6 +932,73 @@ function parse_uri(uri) {
 					config.websocket_early_data = split(config.ws_path, '?ed=')[1];
 					config.ws_path = split(config.ws_path, '?ed=')[0];
 				}
+				break;
+			case 'xhttp':
+			case 'splithttp':
+				config.transport = 'xhttp';
+				config.xhttp_host = params.host ? urldecode(params.host) : null;
+				config.xhttp_path = params.path ? urldecode(params.path) : null;
+				config.xhttp_mode = params.mode || null;
+
+				/* Xray/sing-box-extended share links carry the extended obfuscation
+				 * fields (padding/session/seq/uplink/xmux) as a JSON blob in the
+				 * "extra" query param instead of individual query params. Without
+				 * parsing it, a node that relies on non-default padding/obfuscation
+				 * silently imports with only host/path/mode and none of the settings
+				 * that make it actually connect. */
+				let xhttp_extra = {};
+				if (params.extra) {
+					try {
+						xhttp_extra = json(urldecode(params.extra)) || {};
+					} catch (e) {
+						xhttp_extra = {};
+					}
+				}
+
+				config.xhttp_method = xhttp_extra.method || params.method || null;
+				if (xhttp_extra.headers) {
+					config.xhttp_headers = [];
+					for (let k, v in xhttp_extra.headers)
+						push(config.xhttp_headers, sprintf('%s: %s', k, v));
+				}
+
+				config.xhttp_padding_bytes = xhttp_extra.xPaddingBytes || params.paddingBytes || null;
+				config.xhttp_no_grpc_header = (xhttp_extra.noGRPCHeader === true || params.noGRPCHeader === '1') ? '1' : null;
+				config.xhttp_sc_max_each_post_bytes = xhttp_extra.scMaxEachPostBytes || params.scMaxEachPostBytes || null;
+				config.xhttp_sc_min_posts_interval_ms = xhttp_extra.scMinPostsIntervalMs || params.scMinPostsIntervalMs || null;
+
+				config.xhttp_x_padding_obfs_mode = (xhttp_extra.xPaddingObfsMode === true) ? '1' : null;
+				config.xhttp_x_padding_placement = xhttp_extra.xPaddingPlacement || null;
+				config.xhttp_x_padding_key = xhttp_extra.xPaddingKey || null;
+				config.xhttp_x_padding_header = xhttp_extra.xPaddingHeader || null;
+				config.xhttp_x_padding_method = xhttp_extra.xPaddingMethod || null;
+
+				config.xhttp_session_placement = xhttp_extra.sessionPlacement || null;
+				config.xhttp_session_key = xhttp_extra.sessionKey || null;
+				config.xhttp_session_id_table = xhttp_extra.sessionIdTable || null;
+				config.xhttp_session_id_length = xhttp_extra.sessionIdLength || null;
+
+				config.xhttp_seq_placement = xhttp_extra.seqPlacement || null;
+				config.xhttp_seq_key = xhttp_extra.seqKey || null;
+
+				config.xhttp_uplink_data_placement = xhttp_extra.uplinkDataPlacement || null;
+				config.xhttp_uplink_data_key = xhttp_extra.uplinkDataKey || null;
+				config.xhttp_uplink_chunk_size = xhttp_extra.uplinkChunkSize || null;
+
+				if (xhttp_extra.downloadSettings) {
+					config.xhttp_download_host = xhttp_extra.downloadSettings.host || null;
+					config.xhttp_download_path = xhttp_extra.downloadSettings.path || null;
+				}
+
+				if (xhttp_extra.xmux) {
+					config.xhttp_xmux_max_concurrency = xhttp_extra.xmux.maxConcurrency || null;
+					config.xhttp_xmux_max_connections = xhttp_extra.xmux.maxConnections || null;
+					config.xhttp_xmux_c_max_reuse_times = xhttp_extra.xmux.cMaxReuseTimes || null;
+					config.xhttp_xmux_h_max_request_times = xhttp_extra.xmux.hMaxRequestTimes || null;
+					config.xhttp_xmux_h_max_reusable_secs = xhttp_extra.xmux.hMaxReusableSecs || null;
+					config.xhttp_xmux_h_keep_alive_period = xhttp_extra.xmux.hKeepAlivePeriod || null;
+				}
+
 				break;
 			}
 

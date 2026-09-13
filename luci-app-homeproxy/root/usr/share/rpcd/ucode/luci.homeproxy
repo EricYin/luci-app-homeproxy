@@ -145,7 +145,7 @@ function core_fetch_release(repo, channel) {
 }
 
 function core_repo(core) {
-	return 'SagerNet/sing-box';
+	return 'shtorm-7/sing-box-extended';
 }
 
 function core_arch_matches(filename, goarch) {

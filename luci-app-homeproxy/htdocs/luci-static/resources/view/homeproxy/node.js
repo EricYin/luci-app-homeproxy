@@ -260,7 +260,9 @@ function parseShareLink(uri, features) {
 				tls_reality_public_key: params.get('pbk') ? decodeURIComponent(params.get('pbk')) : null,
 				tls_reality_short_id: params.get('sid'),
 				tls_utls: features.with_utls ? params.get('fp') : null,
-				vless_flow: ['tls', 'reality'].includes(params.get('security')) ? params.get('flow') : null
+				vless_flow: ['tls', 'reality'].includes(params.get('security')) ? params.get('flow') : null,
+				vless_encryption: (params.get('encryption') && params.get('encryption') !== 'none') ?
+					decodeURIComponent(params.get('encryption')) : null
 			};
 			switch (params.get('type')) {
 			case 'grpc':
@@ -285,6 +287,73 @@ function parseShareLink(uri, features) {
 					config.websocket_early_data = config.ws_path.split('?ed=')[1];
 					config.ws_path = config.ws_path.split('?ed=')[0];
 				}
+				break;
+			case 'xhttp':
+			case 'splithttp':
+				config.transport = 'xhttp';
+				config.xhttp_host = params.get('host') ? decodeURIComponent(params.get('host')) : null;
+				config.xhttp_path = params.get('path') ? decodeURIComponent(params.get('path')) : null;
+				config.xhttp_mode = params.get('mode') || null;
+
+				/* Xray/sing-box-extended share links carry the extended obfuscation
+				 * fields (padding/session/seq/uplink/xmux) as a JSON blob in the
+				 * "extra" query param instead of individual query params. Without
+				 * parsing it, a node that relies on non-default padding/obfuscation
+				 * silently imports with only host/path/mode and none of the settings
+				 * that make it actually connect. */
+				let xhttp_extra = {};
+				if (params.get('extra')) {
+					try {
+						xhttp_extra = JSON.parse(decodeURIComponent(params.get('extra'))) || {};
+					} catch (e) {
+						xhttp_extra = {};
+					}
+				}
+
+				config.xhttp_method = xhttp_extra.method || params.get('method') || null;
+				if (xhttp_extra.headers) {
+					config.xhttp_headers = [];
+					for (let k in xhttp_extra.headers)
+						config.xhttp_headers.push(k + ': ' + xhttp_extra.headers[k]);
+				}
+
+				config.xhttp_padding_bytes = xhttp_extra.xPaddingBytes || params.get('paddingBytes') || null;
+				config.xhttp_no_grpc_header = (xhttp_extra.noGRPCHeader === true || params.get('noGRPCHeader') === '1') ? '1' : null;
+				config.xhttp_sc_max_each_post_bytes = xhttp_extra.scMaxEachPostBytes || params.get('scMaxEachPostBytes') || null;
+				config.xhttp_sc_min_posts_interval_ms = xhttp_extra.scMinPostsIntervalMs || params.get('scMinPostsIntervalMs') || null;
+
+				config.xhttp_x_padding_obfs_mode = (xhttp_extra.xPaddingObfsMode === true) ? '1' : null;
+				config.xhttp_x_padding_placement = xhttp_extra.xPaddingPlacement || null;
+				config.xhttp_x_padding_key = xhttp_extra.xPaddingKey || null;
+				config.xhttp_x_padding_header = xhttp_extra.xPaddingHeader || null;
+				config.xhttp_x_padding_method = xhttp_extra.xPaddingMethod || null;
+
+				config.xhttp_session_placement = xhttp_extra.sessionPlacement || null;
+				config.xhttp_session_key = xhttp_extra.sessionKey || null;
+				config.xhttp_session_id_table = xhttp_extra.sessionIdTable || null;
+				config.xhttp_session_id_length = xhttp_extra.sessionIdLength || null;
+
+				config.xhttp_seq_placement = xhttp_extra.seqPlacement || null;
+				config.xhttp_seq_key = xhttp_extra.seqKey || null;
+
+				config.xhttp_uplink_data_placement = xhttp_extra.uplinkDataPlacement || null;
+				config.xhttp_uplink_data_key = xhttp_extra.uplinkDataKey || null;
+				config.xhttp_uplink_chunk_size = xhttp_extra.uplinkChunkSize || null;
+
+				if (xhttp_extra.downloadSettings) {
+					config.xhttp_download_host = xhttp_extra.downloadSettings.host || null;
+					config.xhttp_download_path = xhttp_extra.downloadSettings.path || null;
+				}
+
+				if (xhttp_extra.xmux) {
+					config.xhttp_xmux_max_concurrency = xhttp_extra.xmux.maxConcurrency || null;
+					config.xhttp_xmux_max_connections = xhttp_extra.xmux.maxConnections || null;
+					config.xhttp_xmux_c_max_reuse_times = xhttp_extra.xmux.cMaxReuseTimes || null;
+					config.xhttp_xmux_h_max_request_times = xhttp_extra.xmux.hMaxRequestTimes || null;
+					config.xhttp_xmux_h_max_reusable_secs = xhttp_extra.xmux.hMaxReusableSecs || null;
+					config.xhttp_xmux_h_keep_alive_period = xhttp_extra.xmux.hKeepAlivePeriod || null;
+				}
+
 				break;
 			}
 
@@ -689,6 +758,11 @@ function renderNodeSettings(section, data, features, main_node) {
 	o.depends('type', 'vless');
 	o.modalonly = true;
 
+	o = s.option(form.Value, 'vless_encryption', _('Encryption'),
+		_('Post-quantum VLESS encryption (Xray-core vlessenc). Leave empty to disable (<code>none</code>).'));
+	o.depends('type', 'vless');
+	o.modalonly = true;
+
 	o = s.option(form.Value, 'vmess_alterid', _('Alter ID'),
 		_('Legacy protocol support (VMess MD5 Authentication) is provided for compatibility purposes only, use of alterId > 1 is not recommended.'));
 	o.datatype = 'uinteger';
@@ -726,6 +800,7 @@ function renderNodeSettings(section, data, features, main_node) {
 	o.value('httpupgrade', _('HTTPUpgrade'));
 	o.value('quic', _('QUIC'));
 	o.value('ws', _('WebSocket'));
+	o.value('xhttp', _('XHTTP'));
 	o.depends('type', 'trojan');
 	o.depends('type', 'vless');
 	o.depends('type', 'vmess');
@@ -735,6 +810,8 @@ function renderNodeSettings(section, data, features, main_node) {
 			desc.innerHTML = _('TLS is not enforced. If TLS is not configured, plain HTTP 1.1 is used.');
 		else if (value === 'quic')
 			desc.innerHTML = _('No additional encryption support: It\'s basically duplicate encryption.');
+		else if (value === 'xhttp')
+			desc.innerHTML = _('Xray-core XHTTP transport. Requires a sing-box core with XHTTP support.');
 		else
 			desc.innerHTML = _('No TCP transport, plain HTTP is merged into the HTTP transport.');
 
@@ -823,6 +900,178 @@ function renderNodeSettings(section, data, features, main_node) {
 	o = s.option(form.Value, 'websocket_early_data_header', _('Early data header name'));
 	o.value('Sec-WebSocket-Protocol');
 	o.depends('transport', 'ws');
+	o.modalonly = true;
+
+	o = s.option(form.ListValue, 'xhttp_mode', _('XHTTP mode'));
+	o.value('', _('auto'));
+	o.value('packet-up');
+	o.value('stream-up');
+	o.value('stream-one');
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_host', _('Host'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_path', _('Path'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_padding_bytes', _('Padding bytes'),
+		_('Range of random padding size, e.g. <code>100-1000</code>.'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Flag, 'xhttp_no_grpc_header', _('No gRPC header'),
+		_('Disable the gRPC-style framing header (stream-up/stream-one modes, client only).'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_sc_max_each_post_bytes', _('Max bytes per POST'),
+		_('packet-up mode only.'));
+	o.datatype = 'uinteger';
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_sc_min_posts_interval_ms', _('Min POST interval (ms)'),
+		_('packet-up mode only, client side.'));
+	o.datatype = 'uinteger';
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_xmux_max_concurrency', _('Xmux max concurrency'),
+		_('h2/h3 stream concurrency range, e.g. <code>16-32</code>. Client only.'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_xmux_max_connections', _('Xmux max connections'),
+		_('Client only.'));
+	o.datatype = 'uinteger';
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_xmux_c_max_reuse_times', _('Xmux max connection reuse times'),
+		_('Client only.'));
+	o.datatype = 'uinteger';
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_xmux_h_max_request_times', _('Xmux max requests per connection'),
+		_('Range, e.g. <code>600-900</code>. Client only.'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_xmux_h_max_reusable_secs', _('Xmux max connection lifetime (s)'),
+		_('Range, e.g. <code>1800-3000</code>. Client only.'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_xmux_h_keep_alive_period', _('Xmux H2 keepalive period (s)'),
+		_('H2 PING interval in seconds. 0 uses the 30s default, -1 disables it. Client only.'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_method', _('Uplink method'),
+		_('HTTP method used for uplink POST requests. Defaults to <code>POST</code>.'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.DynamicList, 'xhttp_headers', _('Headers'),
+		_('Extra HTTP request/response headers, one <code>Key: Value</code> pair per line.'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_download_host', _('Download host'),
+		_('Host used for the separate stream-down download leg, if different from the main Host.'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_download_path', _('Download path'),
+		_('Path used for the separate stream-down download leg, if different from the main Path.'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Flag, 'xhttp_x_padding_obfs_mode', _('Padding obfuscation mode'),
+		_('When disabled (default), padding is written via Referer-with-query for out-of-the-box interop. Enable to use the placement/key/header/method fields below.'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.ListValue, 'xhttp_x_padding_placement', _('Padding placement'));
+	o.value('query', _('query'));
+	o.value('header', _('header'));
+	o.value('cookie', _('cookie'));
+	o.depends({'transport': 'xhttp', 'xhttp_x_padding_obfs_mode': '1'});
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_x_padding_key', _('Padding key'),
+		_('Header/cookie/query name for padding. Default <code>x_padding</code>.'));
+	o.depends({'transport': 'xhttp', 'xhttp_x_padding_obfs_mode': '1'});
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_x_padding_header', _('Padding header'),
+		_('Header name used for header placement. Default <code>X-Padding</code>.'));
+	o.depends({'transport': 'xhttp', 'xhttp_x_padding_obfs_mode': '1'});
+	o.modalonly = true;
+
+	o = s.option(form.ListValue, 'xhttp_x_padding_method', _('Padding method'));
+	o.value('repeat-x', _('repeat-x'));
+	o.value('tokenish', _('tokenish'));
+	o.depends({'transport': 'xhttp', 'xhttp_x_padding_obfs_mode': '1'});
+	o.modalonly = true;
+
+	o = s.option(form.ListValue, 'xhttp_session_placement', _('Session ID placement'));
+	o.value('path', _('path'));
+	o.value('query', _('query'));
+	o.value('header', _('header'));
+	o.value('cookie', _('cookie'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_session_key', _('Session ID key'),
+		_('Header/cookie/query name; default depends on placement.'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_session_id_table', _('Session ID character table'),
+		_('A predefined name (e.g. <code>hex</code>, <code>base62</code>) or a literal charset, used to generate a random session ID instead of a UUID.'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_session_id_length', _('Session ID length range'),
+		_('Range, e.g. <code>16-24</code>. Requires the character table above to be set.'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.ListValue, 'xhttp_seq_placement', _('Sequence placement'));
+	o.value('path', _('path'));
+	o.value('query', _('query'));
+	o.value('header', _('header'));
+	o.value('cookie', _('cookie'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_seq_key', _('Sequence key'),
+		_('Header/cookie/query name; default depends on placement.'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.ListValue, 'xhttp_uplink_data_placement', _('Uplink data placement'));
+	o.value('body', _('body (default)'));
+	o.value('header', _('header'));
+	o.value('cookie', _('cookie'));
+	o.value('auto', _('auto'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_uplink_data_key', _('Uplink data key'),
+		_('Header/cookie name prefix used for header/cookie placement.'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_uplink_chunk_size', _('Uplink chunk size range'),
+		_('Range, e.g. <code>100000-200000</code>.'));
+	o.depends('transport', 'xhttp');
 	o.modalonly = true;
 
 	o = s.option(form.ListValue, 'packet_encoding', _('Packet encoding'));

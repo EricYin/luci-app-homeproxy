@@ -446,7 +446,7 @@ return view.extend({
 		o = s.option(form.DummyValue, '_core_channel', _('Update channel'));
 		bindCoreRow(o, 'channelRow');
 
-		o = s.option(form.DummyValue, '_core_official', _('SagerNet'));
+		o = s.option(form.DummyValue, '_core_official', 'Extended');
 		bindCoreRow(o, 'officialRow');
 
 		o = s.option(form.DummyValue, '_core_check', _('Version check'));

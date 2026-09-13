@@ -15,6 +15,16 @@ const callServiceList = rpc.declare({
 });
 
 return baseclass.extend({
+	getServiceStatus(instance) {
+		return L.resolveDefault(callServiceList('homeproxy'), {}).then((res) => {
+			try {
+				return res.homeproxy.instances[instance].running === true;
+			} catch (e) {
+				return false;
+			}
+		});
+	},
+
 	dns_strategy: {
 		'': _('Default'),
 		'prefer_ipv4': _('Prefer IPv4'),
@@ -82,16 +92,6 @@ return baseclass.extend({
 			return dl;
 		}
 	}),
-
-	getServiceStatus(instance) {
-		return L.resolveDefault(callServiceList('homeproxy'), {}).then((res) => {
-			try {
-				return res.homeproxy.instances[instance].running === true;
-			} catch (e) {
-				return false;
-			}
-		});
-	},
 
 	reconcileUrltestNodes(uciconfig) {
 		const available = Object.create(null);

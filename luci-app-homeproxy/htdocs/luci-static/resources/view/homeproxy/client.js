@@ -1,7 +1,6 @@
 
 'use strict';
 'require form';
-'require fs';
 'require network';
 'require poll';
 'require rpc';
@@ -134,8 +133,7 @@ let stubValidator = {
 };
 
 function isNormalModeActive() {
-	let main_node = uci.get('homeproxy', 'config', 'main_node');
-	return main_node !== 'nil';
+	return uci.get('homeproxy', 'config', 'main_node') !== 'nil';
 }
 
 function noopFeedback() {
@@ -328,6 +326,7 @@ return view.extend({
 		s = m.section(form.NamedSection, 'config', 'homeproxy');
 
 		s.tab('routing', _('Routing Settings'));
+		s.tab('dns', _('DNS Settings'));
 		s.tab('dashboard', _('Dashboard'));
 
 		o = s.taboption('routing', form.ListValue, 'main_node', _('Main node'));
@@ -379,7 +378,7 @@ return view.extend({
 			_('List of nodes to test.'));
 		for (let i in proxy_nodes)
 			o.value(i, proxy_nodes[i]);
-		o.depends({'main_udp_node': 'urltest'});
+		o.depends('main_udp_node', 'urltest');
 		o.rmempty = false;
 		o.retain = true;
 
@@ -387,38 +386,40 @@ return view.extend({
 			_('The test interval in seconds.'));
 		o.datatype = 'uinteger';
 		o.placeholder = '180';
-		o.depends({'main_udp_node': 'urltest'});
+		o.depends('main_udp_node', 'urltest');
 		o.retain = true;
 
 		o = s.taboption('routing', form.Value, 'main_udp_urltest_tolerance', _('Test tolerance'),
 			_('The test tolerance in milliseconds.'));
 		o.datatype = 'uinteger';
 		o.placeholder = '50';
-		o.depends({'main_udp_node': 'urltest'});
+		o.depends('main_udp_node', 'urltest');
 		o.retain = true;
 
 		o = s.taboption('routing', form.Flag, 'main_udp_urltest_interrupt_exist_connections', _('Interrupt existing connections'));
 		o.default = o.enabled;
 		o.rmempty = false;
-		o.depends({'main_udp_node': 'urltest'});
+		o.depends('main_udp_node', 'urltest');
 		o.retain = true;
 
-		o = s.taboption('routing', form.Value, 'dns_server', _('DNS server'),
+		o = s.taboption('dns', form.SectionValue, '_dns', form.NamedSection, 'config', 'homeproxy');
+		ss = o.subsection;
+
+		so = ss.option(form.Value, 'dns_server', _('DNS server'),
 			_('Support UDP, TCP, DoH, DoQ, DoT. TCP protocol will be used if not specified.'));
-		o.value('wan', _('WAN DNS (read from interface)'));
-		o.value('1.1.1.1', _('CloudFlare Public DNS (1.1.1.1)'));
-		o.value('9.9.9.9', _('Quad9 Public DNS (9.9.9.9)'));
-		o.value('8.8.8.8', _('Google Public DNS (8.8.8.8)'));
-		o.value('', '---');
-		o.value('223.5.5.5', _('Aliyun Public DNS (223.5.5.5)'));
-		o.value('180.184.1.1', _('ByteDance Public DNS (180.184.1.1)'));
-		o.value('119.29.29.29', _('Tencent Public DNS (119.29.29.29)'));
-		o.default = '8.8.8.8';
-		o.rmempty = false;
-		o.depends({'routing_mode': 'bypass_mainland_china'});
-		o.depends({'routing_mode': 'global'});
-		o.retain = true;
-		o.validate = function(section_id, value) {
+		so.value('wan', _('WAN DNS (read from interface)'));
+		so.value('1.1.1.1', _('CloudFlare Public DNS (1.1.1.1)'));
+		so.value('9.9.9.9', _('Quad9 Public DNS (9.9.9.9)'));
+		so.value('8.8.8.8', _('Google Public DNS (8.8.8.8)'));
+		so.value('', '---');
+		so.value('223.5.5.5', _('Aliyun Public DNS (223.5.5.5)'));
+		so.value('180.184.1.1', _('ByteDance Public DNS (180.184.1.1)'));
+		so.value('119.29.29.29', _('Tencent Public DNS (119.29.29.29)'));
+		so.default = '8.8.8.8';
+		so.rmempty = false;
+		so.depends('homeproxy.config.routing_mode', /^(bypass_mainland_china|global)$/);
+		so.retain = true;
+		so.validate = function(section_id, value) {
 			if (section_id && !['wan'].includes(value)) {
 				if (!value)
 					return _('Expecting: %s').format(_('non-empty value'));
@@ -443,17 +444,17 @@ return view.extend({
 			return true;
 		}
 
-		o = s.taboption('routing', form.Value, 'china_dns_server', _('China DNS server'),
+		so = ss.option(form.Value, 'china_dns_server', _('China DNS server'),
 			_('The dns server for resolving China domains. Support UDP, TCP, DoH, DoQ, DoT.'));
-		o.value('wan', _('WAN DNS (read from interface)'));
-		o.value('223.5.5.5', _('Aliyun Public DNS (223.5.5.5)'));
-		o.value('180.184.1.1', _('ByteDance Public DNS (180.184.1.1)'));
-		o.value('119.29.29.29', _('Tencent Public DNS (119.29.29.29)'));
-		o.depends({'routing_mode': 'bypass_mainland_china'});
-		o.default = '223.5.5.5';
-		o.rmempty = false;
-		o.retain = true;
-		o.validate = function(section_id, value) {
+		so.value('wan', _('WAN DNS (read from interface)'));
+		so.value('223.5.5.5', _('Aliyun Public DNS (223.5.5.5)'));
+		so.value('180.184.1.1', _('ByteDance Public DNS (180.184.1.1)'));
+		so.value('119.29.29.29', _('Tencent Public DNS (119.29.29.29)'));
+		so.depends('homeproxy.config.routing_mode', 'bypass_mainland_china');
+		so.default = '223.5.5.5';
+		so.rmempty = false;
+		so.retain = true;
+		so.validate = function(section_id, value) {
 			if (section_id && !['wan'].includes(value)) {
 				if (!value)
 					return _('Expecting: %s').format(_('non-empty value'));
@@ -476,6 +477,73 @@ return view.extend({
 
 			return true;
 		}
+
+		so = ss.option(form.DynamicList, 'dns_server_fallback', _('DNS server (fallback)'),
+			_('Additional DNS servers used together with the primary DNS server above. When set, queries are distributed across all of them according to the strategy below. Support UDP, TCP, DoH, DoQ, DoT.'));
+		so.depends('homeproxy.config.routing_mode', /^(bypass_mainland_china|global)$/);
+		so.retain = true;
+		so.validate = function(section_id, value) {
+			if (section_id && value) {
+				let ipv6_support = this.section.formvalue(section_id, 'ipv6_support');
+				try {
+					let url = new URL(value.replace(/^.*:\/\//, 'http://'));
+					if (stubValidator.apply('hostname', url.hostname))
+						return true;
+					else if (stubValidator.apply('ip4addr', url.hostname))
+						return true;
+					else if ((ipv6_support === '1') && stubValidator.apply('ip6addr', url.hostname.match(/^\[(.+)\]$/)?.[1]))
+						return true;
+					else
+						return _('Expecting: %s').format(_('valid DNS server address'));
+				} catch(e) {}
+
+				if (!stubValidator.apply((ipv6_support === '1') ? 'ipaddr' : 'ip4addr', value))
+					return _('Expecting: %s').format(_('valid DNS server address'));
+			}
+
+			return true;
+		}
+
+		so = ss.option(form.DynamicList, 'china_dns_server_fallback', _('China DNS server (fallback)'),
+			_('Additional DNS servers used together with the China DNS server above.'));
+		so.depends('homeproxy.config.routing_mode', 'bypass_mainland_china');
+		so.retain = true;
+		so.validate = function(section_id, value) {
+			if (section_id && value) {
+				try {
+					let url = new URL(value.replace(/^.*:\/\//, 'http://'));
+					if (stubValidator.apply('hostname', url.hostname))
+						return true;
+					else if (stubValidator.apply('ip4addr', url.hostname))
+						return true;
+					else if (stubValidator.apply('ip6addr', url.hostname.match(/^\[(.+)\]$/)?.[1]))
+						return true;
+					else
+						return _('Expecting: %s').format(_('valid DNS server address'));
+				} catch(e) {}
+
+				if (!stubValidator.apply('ipaddr', value))
+					return _('Expecting: %s').format(_('valid DNS server address'));
+			}
+
+			return true;
+		}
+
+		so = ss.option(form.ListValue, 'dns_fallback_strategy', _('DNS fallback strategy'),
+			_('How to query the primary and fallback DNS servers when fallback servers are configured above.'));
+		so.value('sequential', _('Sequential (try in order)'));
+		so.value('parallel', _('Parallel (query all at once)'));
+		so.default = 'sequential';
+		so.rmempty = false;
+		so.depends('homeproxy.config.routing_mode', /^(bypass_mainland_china|global)$/);
+		so.retain = true;
+
+		so = ss.option(form.Value, 'dns_fallback_timeout', _('DNS fallback timeout'),
+			_('Overall time budget for the whole fallback exchange, in seconds. Leave empty for default (10s).'));
+		so.datatype = 'uinteger';
+		so.placeholder = '10';
+		so.depends('homeproxy.config.routing_mode', /^(bypass_mainland_china|global)$/);
+		so.retain = true;
 
 		o = s.taboption('routing', form.ListValue, 'routing_mode', _('Routing mode'));
 		o.value('bypass_mainland_china', _('Bypass mainland China'));
@@ -520,7 +588,7 @@ return view.extend({
 		}
 		o.value('system', _('System'));
 		o.default = 'mixed';
-		o.depends({'proxy_mode': 'tun'});
+		o.depends('proxy_mode', 'tun');
 		o.rmempty = false;
 		o.retain = true;
 		o.onchange = function(ev, section_id, value) {
@@ -539,7 +607,7 @@ return view.extend({
 
 		s.tab('app_rules', _('Proxy Rules'));
 		o = s.taboption('app_rules', form.SectionValue, '_app_rules', form.GridSection, 'app_rule');
-		o.depends({'routing_mode': 'bypass_mainland_china', 'proxy_mode': 'tun'});
+		o.depends('routing_mode', 'bypass_mainland_china');
 
 		ss = o.subsection;
 		ss.addremove = true;
@@ -744,7 +812,7 @@ return view.extend({
 		so.rmempty = false;
 
 		so = fwtool.addIPOption(ss, 'lan_ip_policy', 'lan_direct_ipv4_ips', _('Direct IPv4 IP-s'), null, 'ipv4', hosts, true);
-		so.depends({'lan_proxy_mode': 'except_listed'});
+		so.depends('lan_proxy_mode', 'except_listed');
 		so.retain = true;
 
 		so = fwtool.addIPOption(ss, 'lan_ip_policy', 'lan_direct_ipv6_ips', _('Direct IPv6 IP-s'), null, 'ipv6', hosts, true);
@@ -752,11 +820,11 @@ return view.extend({
 		so.retain = true;
 
 		so = fwtool.addMACOption(ss, 'lan_ip_policy', 'lan_direct_mac_addrs', _('Direct MAC-s'), null, hosts);
-		so.depends({'lan_proxy_mode': 'except_listed'});
+		so.depends('lan_proxy_mode', 'except_listed');
 		so.retain = true;
 
 		so = fwtool.addIPOption(ss, 'lan_ip_policy', 'lan_proxy_ipv4_ips', _('Proxy IPv4 IP-s'), null, 'ipv4', hosts, true);
-		so.depends({'lan_proxy_mode': 'listed_only'});
+		so.depends('lan_proxy_mode', 'listed_only');
 		so.retain = true;
 
 		so = fwtool.addIPOption(ss, 'lan_ip_policy', 'lan_proxy_ipv6_ips', _('Proxy IPv6 IP-s'), null, 'ipv6', hosts, true);
@@ -764,13 +832,13 @@ return view.extend({
 		so.retain = true;
 
 		so = fwtool.addMACOption(ss, 'lan_ip_policy', 'lan_proxy_mac_addrs', _('Proxy MAC-s'), null, hosts);
-		so.depends({'lan_proxy_mode': 'listed_only'});
+		so.depends('lan_proxy_mode', 'listed_only');
 		so.retain = true;
 
 		so = fwtool.addIPOption(ss, 'lan_ip_policy', 'lan_gaming_mode_ipv4_ips', _('Gaming mode IPv4 IP-s'), null, 'ipv4', hosts, true);
 
 		so = fwtool.addIPOption(ss, 'lan_ip_policy', 'lan_gaming_mode_ipv6_ips', _('Gaming mode IPv6 IP-s'), null, 'ipv6', hosts, true);
-		so.depends({'homeproxy.config.ipv6_support': '1'});
+		so.depends('homeproxy.config.ipv6_support', '1');
 		so.retain = true;
 
 		so = fwtool.addMACOption(ss, 'lan_ip_policy', 'lan_gaming_mode_mac_addrs', _('Gaming mode MAC-s'), null, hosts);
@@ -778,7 +846,7 @@ return view.extend({
 		so = fwtool.addIPOption(ss, 'lan_ip_policy', 'lan_global_proxy_ipv4_ips', _('Global proxy IPv4 IP-s'), null, 'ipv4', hosts, true);
 
 		so = fwtool.addIPOption(ss, 'lan_ip_policy', 'lan_global_proxy_ipv6_ips', _('Global proxy IPv6 IP-s'), null, 'ipv6', hosts, true);
-		so.depends({'homeproxy.config.ipv6_support': '1'});
+		so.depends('homeproxy.config.ipv6_support', '1');
 		so.retain = true;
 
 		so = fwtool.addMACOption(ss, 'lan_ip_policy', 'lan_global_proxy_mac_addrs', _('Global proxy MAC-s'), null, hosts);
@@ -790,7 +858,7 @@ return view.extend({
 
 		so = ss.taboption('wan_ip_policy', form.DynamicList, 'wan_proxy_ipv6_ips', _('Proxy IPv6 IP-s'));
 		so.datatype = 'or(ip6addr, cidr6)';
-		so.depends({'homeproxy.config.ipv6_support': '1'});
+		so.depends('homeproxy.config.ipv6_support', '1');
 		so.retain = true;
 
 		so = ss.taboption('wan_ip_policy', form.DynamicList, 'wan_direct_ipv4_ips', _('Direct IPv4 IP-s'));
@@ -798,7 +866,7 @@ return view.extend({
 
 		so = ss.taboption('wan_ip_policy', form.DynamicList, 'wan_direct_ipv6_ips', _('Direct IPv6 IP-s'));
 		so.datatype = 'or(ip6addr, cidr6)';
-		so.depends({'homeproxy.config.ipv6_support': '1'});
+		so.depends('homeproxy.config.ipv6_support', '1');
 		so.retain = true;
 
 		ss.tab('proxy_domain_list', _('Proxy Domain List'));
