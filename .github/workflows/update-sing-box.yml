@@ -1,4 +1,4 @@
-name: sing-box 版本检查同步
+name: sing-box-extended 版本检查同步
 
 on:
   workflow_dispatch:
@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   update:
-    name: 检查并更新 sing-box 核心
+    name: 检查并更新 sing-box-extended 核心
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
@@ -36,15 +36,18 @@ jobs:
             "$(pwd)" "$PACKAGE_BRANCH" "$target"
           git reset --hard "origin/$PACKAGE_BRANCH"
 
-      - name: 检查 sing-box 上游版本
+      - name: 检查 sing-box-extended 上游版本
         id: upstream
         run: |
+          # 注意：如果你的本地文件夹名字变了，请将下面的 'sing-box/Makefile' 修改为对应路径
           makefile='sing-box/Makefile'
 
-          upstream_tag="$(gh api 'repos/SagerNet/sing-box/releases?per_page=30' \
-            --jq '[.[] | select(.draft == false and .prerelease == false)][0].tag_name')"
+          # 仅过滤掉草稿（draft == false），包含 prerelease 预发布版
+          upstream_tag="$(gh api 'repos/shtorm-7/sing-box-extended/releases?per_page=30' \
+            --jq '[.[] | select(.draft == false)][0].tag_name')"
 
-          [[ "$upstream_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.]+)?$ ]]
+          # 匹配常见的版本号格式（包括纯数字版本以及带 alpha/beta/rc/preview 等后缀的版本）
+          [[ "$upstream_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+.*$ ]]
 
           upstream_version="${upstream_tag#v}"
           current_version="$(sed -n 's/^PKG_UPSTREAM_VERSION:=//p' "$makefile")"
@@ -53,7 +56,7 @@ jobs:
 
           if [[ "$current_version" == "$upstream_version" ]]; then
             changed=false
-            echo "sing-box 已是最新版：$upstream_version"
+            echo "sing-box-extended 已是最新版：$upstream_version"
           fi
 
           {
@@ -62,36 +65,37 @@ jobs:
             echo "version=$upstream_version"
           } >> "$GITHUB_OUTPUT"
 
-      - name: 下载并校验 sing-box 源码
+      - name: 下载并校验 sing-box-extended 源码
         if: steps.upstream.outputs.changed == 'true'
         id: source
         env:
           UPSTREAM_TAG: ${{ steps.upstream.outputs.tag }}
         run: |
-          archive="$RUNNER_TEMP/sing-box.tar.gz"
+          archive="$RUNNER_TEMP/sing-box-extended.tar.gz"
 
           curl -fL --retry 3 \
-            "https://codeload.github.com/SagerNet/sing-box/tar.gz/$UPSTREAM_TAG" \
+            "https://codeload.github.com/shtorm-7/sing-box-extended/tar.gz/$UPSTREAM_TAG" \
             -o "$archive"
 
           tar -tzf "$archive" >/dev/null
 
           echo "hash=$(sha256sum "$archive" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
-      - name: 更新 sing-box 软件包元数据
+      - name: 更新 sing-box-extended 软件包元数据
         if: steps.upstream.outputs.changed == 'true'
         env:
           SOURCE_HASH: ${{ steps.source.outputs.hash }}
           UPSTREAM_VERSION: ${{ steps.upstream.outputs.version }}
         run: |
+          # 注意：如果你的本地文件夹名字变了，请同步修改这里
           makefile='sing-box/Makefile'
 
-          if [[ "$UPSTREAM_VERSION" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-([A-Za-z]+)\.([0-9]+)$ ]]; then
+          if [[ "$UPSTREAM_VERSION" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-([A-Za-z]+)\.?([0-9]*)$ ]]; then
             package_version="${BASH_REMATCH[1]}_${BASH_REMATCH[2],,}${BASH_REMATCH[3]}"
-          elif [[ "$UPSTREAM_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          elif [[ "$UPSTREAM_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+.*$ ]]; then
             package_version="$UPSTREAM_VERSION"
           else
-            printf '无法转换 sing-box 版本号：%s\n' "$UPSTREAM_VERSION" >&2
+            printf '无法转换 sing-box-extended 版本号：%s\n' "$UPSTREAM_VERSION" >&2
             exit 1
           fi
 
@@ -109,13 +113,13 @@ jobs:
 
           git diff --check
 
-      - name: 提交 sing-box 更新
+      - name: 提交 sing-box-extended 更新
         if: steps.upstream.outputs.changed == 'true'
         env:
           PACKAGE_BRANCH: ${{ github.event.repository.default_branch }}
           UPSTREAM_VERSION: ${{ steps.upstream.outputs.version }}
         run: |
-          message="chore: 更新 sing-box 至 ${UPSTREAM_VERSION}-r1"
+          message="chore: 更新 sing-box-extended 至 ${UPSTREAM_VERSION}-r1"
 
           local_head="$(git rev-parse HEAD)"
           git fetch origin "$PACKAGE_BRANCH"
