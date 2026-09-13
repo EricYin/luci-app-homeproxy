@@ -7,6 +7,13 @@
 'require uci';
 'require ui';
 
+const callServiceList = rpc.declare({
+	object: 'service',
+	method: 'list',
+	params: ['name'],
+	expect: { '': {} }
+});
+
 return baseclass.extend({
 	dns_strategy: {
 		'': _('Default'),
@@ -75,6 +82,16 @@ return baseclass.extend({
 			return dl;
 		}
 	}),
+
+	getServiceStatus(instance) {
+		return L.resolveDefault(callServiceList('homeproxy'), {}).then((res) => {
+			try {
+				return res.homeproxy.instances[instance].running === true;
+			} catch (e) {
+				return false;
+			}
+		});
+	},
 
 	reconcileUrltestNodes(uciconfig) {
 		const available = Object.create(null);
