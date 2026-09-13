@@ -54,7 +54,7 @@ function core_cache_paths() {
 		`${RUN_DIR}/cache.db`
 	];
 
-	for (let run_conf in [ `${RUN_DIR}/sing-box-core.json`, `${RUN_DIR}/sing-box-c.json` ]) {
+	for (let run_conf in [ `${RUN_DIR}/sing-box-c.json` ]) {
 		if (!access(run_conf)) continue;
 		let conf;
 		try { conf = json(readfile(run_conf)); } catch (e) { conf = null; }
