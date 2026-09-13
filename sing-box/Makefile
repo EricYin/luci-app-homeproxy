@@ -10,7 +10,7 @@ PKG_VERSION:=1.14.0-extended-2.7.1
 PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_UPSTREAM_VERSION).tar.gz
-PKG_SOURCE_URL:=https://codeload.github.com/SagerNet/sing-box/tar.gz/v$(PKG_UPSTREAM_VERSION)?
+PKG_SOURCE_URL:=https://codeload.github.com/shtorm-7/sing-box-extended/tar.gz/v$(PKG_UPSTREAM_VERSION)?
 PKG_HASH:=9537572485687cbdb423d9a93ebac61272fd5ecf1dcba8a816c6d223bf641c21
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_UPSTREAM_VERSION)
 
@@ -48,7 +48,7 @@ define Package/sing-box/Default
   CATEGORY:=Network
   SUBMENU:=Web Servers/Proxies
   TITLE:=The universal proxy platform
-  URL:=https://sing-box.sagernet.org/
+  URL:=https://github.com/shtorm-7/sing-box-extended
   DEPENDS:=+ca-bundle +kmod-inet-diag
   USERID:=sing-box=5566:sing-box=5566
 endef
