@@ -14,13 +14,6 @@
 'require tools.firewall as fwtool';
 'require tools.widgets as widgets';
 
-const callServiceList = rpc.declare({
-	object: 'service',
-	method: 'list',
-	params: ['name'],
-	expect: { '': {} }
-});
-
 const callReadDomainList = rpc.declare({
 	object: 'luci.homeproxy',
 	method: 'acllist_read',
@@ -41,14 +34,73 @@ const callCurrentNode = rpc.declare({
 	expect: { '': {} }
 });
 
-function getServiceStatus() {
-	return L.resolveDefault(callServiceList('homeproxy'), {}).then((res) => {
-		let isRunning = false;
-		try {
-			isRunning = res['homeproxy']['instances']['sing-box-c']['running'];
-		} catch (e) { }
-		return isRunning;
-	});
+function parseDomainList(value) {
+	let suffixes = [], keywords = [], normalized = [], seen = Object.create(null);
+	for (let item of (value || '').replace(/\r\n?/g, '\n').split('\n')) {
+		item = item.trim().toLowerCase();
+		if (!item)
+			continue;
+		item = item.replace(/^\.+|\.+$/g, '');
+		if (!item)
+			return { error: _('Expecting: %s').format(_('valid hostname')) };
+		if (!stubValidator.apply('hostname', item))
+			return { error: _('Expecting: %s').format(_('valid hostname')) };
+		if (seen[item])
+			continue;
+
+		seen[item] = true;
+		normalized.push(item);
+		(item.includes('.') ? suffixes : keywords).push(item);
+	}
+
+	return {
+		content: normalized.length ? normalized.join('\n') + '\n' : '',
+		suffixes,
+		keywords
+	};
+}
+
+function domainSuffixOverlap(left, right) {
+	const endsWithDomain = (value, suffix) =>
+		value === suffix || value.endsWith('.' + suffix);
+	return endsWithDomain(left, right) || endsWithDomain(right, left);
+}
+
+/*
+ * Cross-list conflict check, ported from a comparison fork. Fixed one asymmetry
+ * bug found in the original: when comparing a keyword entry against a suffix
+ * entry, only one direction (suffix.includes(keyword)) was checked there, so a
+ * keyword that is a superstring of a suffix (rare, but possible) went
+ * undetected. Both directions are now checked for every keyword/suffix pairing.
+ */
+function findDomainListConflict(groups) {
+	let entries = [];
+	for (let group of groups) {
+		for (let value of group.suffixes)
+			entries.push({ group, type: 'suffix', value });
+		for (let value of group.keywords)
+			entries.push({ group, type: 'keyword', value });
+	}
+
+	for (let i = 0; i < entries.length; i++) {
+		for (let j = 0; j < i; j++) {
+			const left = entries[i], right = entries[j];
+			if (left.group.id === right.group.id)
+				continue;
+
+			let overlap;
+			if (left.type === 'keyword' || right.type === 'keyword') {
+				overlap = left.value.includes(right.value) || right.value.includes(left.value);
+			} else {
+				overlap = domainSuffixOverlap(left.value, right.value);
+			}
+
+			if (overlap)
+				return { left, right };
+		}
+	}
+
+	return null;
 }
 
 function renderStatus(isRunning, version, currentNodeLabel, currentUdpNodeLabel) {
@@ -124,7 +176,7 @@ return view.extend({
 		}
 
 		function refreshStatus() {
-			return L.resolveDefault(getServiceStatus(), false).then((isRunning) => {
+			return L.resolveDefault(hp.getServiceStatus('sing-box-c'), false).then((isRunning) => {
 				if (!isRunning)
 					return [false, null];
 				return L.resolveDefault(callCurrentNode(), null).then((current) => [true, current]);
@@ -165,6 +217,105 @@ return view.extend({
 			});
 		};
 
+		/* Proxy/Direct Domain List content lives outside UCI (RPC-backed files), so it
+		 * needs its own load/pending-edit cache to be included in cross-list validation
+		 * even for tabs the user never opened this session. */
+		let domainListCache = Object.create(null),
+		    pendingDomainLists = Object.create(null);
+
+		function loadDomainList(type) {
+			if (Object.prototype.hasOwnProperty.call(pendingDomainLists, type))
+				return Promise.resolve(pendingDomainLists[type]);
+
+			return L.resolveDefault(callReadDomainList(type), {}).then((res) => {
+				domainListCache[type] = res.content || '';
+				return domainListCache[type];
+			});
+		}
+
+		function stageDomainList(type, value) {
+			const parsed = parseDomainList(value);
+			if (parsed.error)
+				throw new TypeError(parsed.error);
+
+			pendingDomainLists[type] = parsed.content;
+			domainListCache[type] = parsed.content;
+		}
+
+		function domainListContent(type) {
+			return Object.prototype.hasOwnProperty.call(pendingDomainLists, type) ?
+				pendingDomainLists[type] : (domainListCache[type] || '');
+		}
+
+		/* Cross-list conflict check: Proxy/Direct Domain List plus every enabled Proxy
+		 * Rules entry that uses a custom inline "Domain list". Throws to block saving. */
+		function validateDomainLists() {
+			let groups = [
+				{ id: 'proxy_list', label: _('Proxy Domain List') },
+				{ id: 'direct_list', label: _('Direct Domain List') }
+			];
+
+			uci.sections('homeproxy', 'app_rule', (section) => {
+				if (section.enabled === '0')
+					return;
+				if (section.source !== 'custom' || section.custom_mode !== 'domains')
+					return;
+				const name = (section.custom_service_name || '').trim();
+				groups.push({
+					id: section['.name'],
+					label: name || _('Custom'),
+					content: section.custom_domains
+				});
+			});
+
+			for (let group of groups) {
+				const content = Object.prototype.hasOwnProperty.call(group, 'content') ?
+					group.content : domainListContent(group.id);
+				const parsed = parseDomainList(content);
+				if (parsed.error)
+					throw new TypeError(_('%s contains an invalid domain.').format(group.label));
+				Object.assign(group, parsed);
+			}
+
+			const conflict = findDomainListConflict(groups);
+			if (conflict)
+				throw new TypeError(
+					_('Domain %s in %s conflicts with %s in %s.').format(
+						conflict.left.value, conflict.left.group.label,
+						conflict.right.value, conflict.right.group.label
+					)
+				);
+		}
+
+		function configureDomainListSave(map) {
+			const saveMap = map.save;
+			map.save = function(cb, silent) {
+				return saveMap.call(this, () => Promise.resolve(
+					typeof cb === 'function' ? cb() : null
+				).then(() => {
+					/* Include the Proxy/Direct Domain List tabs even if never opened. */
+					return Promise.all(['proxy_list', 'direct_list'].map(loadDomainList));
+				}).then(() => {
+					validateDomainLists();
+					const types = Object.keys(pendingDomainLists);
+					if (!types.length)
+						return null;
+
+					const lists = Object.assign({}, pendingDomainLists);
+					return Promise.all(Object.keys(lists).map((type) =>
+						callWriteDomainList(type, lists[type])
+					)).then(() => {
+						pendingDomainLists = Object.create(null);
+					});
+				}), silent).catch((error) => {
+					if (silent)
+						ui.addNotification(null, E('p', {}, error.message), 'error');
+					throw error;
+				});
+			};
+		}
+		configureDomainListSave(m);
+
 		s = m.section(form.TypedSection);
 		s.render = function () {
 			poll.add(refreshStatus);
@@ -193,23 +344,27 @@ return view.extend({
 			o.value(i, proxy_nodes[i]);
 		o.depends('main_node', 'urltest');
 		o.rmempty = false;
+		o.retain = true;
 
 		o = s.taboption('routing', form.Value, 'main_urltest_interval', _('Test interval'),
 			_('The test interval in seconds.'));
 		o.datatype = 'uinteger';
 		o.placeholder = '180';
 		o.depends('main_node', 'urltest');
+		o.retain = true;
 
 		o = s.taboption('routing', form.Value, 'main_urltest_tolerance', _('Test tolerance'),
 			_('The test tolerance in milliseconds.'));
 		o.datatype = 'uinteger';
 		o.placeholder = '50';
 		o.depends('main_node', 'urltest');
+		o.retain = true;
 
 		o = s.taboption('routing', form.Flag, 'main_urltest_interrupt_exist_connections', _('Interrupt existing connections'));
 		o.default = o.enabled;
 		o.rmempty = false;
 		o.depends('main_node', 'urltest');
+		o.retain = true;
 
 		o = s.taboption('routing', form.ListValue, 'main_udp_node', _('Main UDP node'));
 		o.value('nil', _('Disable'));
@@ -226,23 +381,27 @@ return view.extend({
 			o.value(i, proxy_nodes[i]);
 		o.depends({'main_udp_node': 'urltest'});
 		o.rmempty = false;
+		o.retain = true;
 
 		o = s.taboption('routing', form.Value, 'main_udp_urltest_interval', _('Test interval'),
 			_('The test interval in seconds.'));
 		o.datatype = 'uinteger';
 		o.placeholder = '180';
 		o.depends({'main_udp_node': 'urltest'});
+		o.retain = true;
 
 		o = s.taboption('routing', form.Value, 'main_udp_urltest_tolerance', _('Test tolerance'),
 			_('The test tolerance in milliseconds.'));
 		o.datatype = 'uinteger';
 		o.placeholder = '50';
 		o.depends({'main_udp_node': 'urltest'});
+		o.retain = true;
 
 		o = s.taboption('routing', form.Flag, 'main_udp_urltest_interrupt_exist_connections', _('Interrupt existing connections'));
 		o.default = o.enabled;
 		o.rmempty = false;
 		o.depends({'main_udp_node': 'urltest'});
+		o.retain = true;
 
 		o = s.taboption('routing', form.Value, 'dns_server', _('DNS server'),
 			_('Support UDP, TCP, DoH, DoQ, DoT. TCP protocol will be used if not specified.'));
@@ -258,6 +417,7 @@ return view.extend({
 		o.rmempty = false;
 		o.depends({'routing_mode': 'bypass_mainland_china'});
 		o.depends({'routing_mode': 'global'});
+		o.retain = true;
 		o.validate = function(section_id, value) {
 			if (section_id && !['wan'].includes(value)) {
 				if (!value)
@@ -292,6 +452,7 @@ return view.extend({
 		o.depends({'routing_mode': 'bypass_mainland_china'});
 		o.default = '223.5.5.5';
 		o.rmempty = false;
+		o.retain = true;
 		o.validate = function(section_id, value) {
 			if (section_id && !['wan'].includes(value)) {
 				if (!value)
@@ -334,7 +495,7 @@ return view.extend({
 					if (!stubValidator.apply('port', i) && !stubValidator.apply('portrange', i))
 						return _('Expecting: %s').format(_('valid port value'));
 					if (ports.includes(i))
-						return _('Port %s alrealy exists!').format(i);
+						return _('Port %s already exists!').format(i);
 					ports = ports.concat(i);
 				}
 			}
@@ -361,6 +522,7 @@ return view.extend({
 		o.default = 'mixed';
 		o.depends({'proxy_mode': 'tun'});
 		o.rmempty = false;
+		o.retain = true;
 		o.onchange = function(ev, section_id, value) {
 			let desc = ev.target.nextElementSibling;
 			if (value === 'mixed')
@@ -394,6 +556,7 @@ return view.extend({
 		so.placeholder = _('e.g. My Service');
 		so.depends('source', 'custom');
 		so.modalonly = true;
+		so.retain = true;
 
 		so = ss.option(form.ListValue, 'source', _('Service'));
 		so.value('youtube', _('YouTube'));
@@ -433,12 +596,14 @@ return view.extend({
 		so.rmempty = false;
 		so.depends('source', 'custom');
 		so.modalonly = true;
+		so.retain = true;
 
 		so = ss.option(form.DynamicList, 'custom_url', _('Domain rule-set URL'));
 		so.placeholder = 'https://example.com/rule-set.srs';
 		so.depends({'source': 'custom', 'custom_mode': 'url_domain'});
 		so.depends({'source': 'custom', 'custom_mode': 'url_mixed'});
 		so.modalonly = true;
+		so.retain = true;
 		so.validate = function(section_id, value) {
 			if (section_id && value && !/^https?:\/\/.+/.test(value))
 				return _('Expecting: %s').format(_('a valid URL starting with http:// or https://'));
@@ -450,6 +615,7 @@ return view.extend({
 		so.depends({'source': 'custom', 'custom_mode': 'url_ip'});
 		so.depends({'source': 'custom', 'custom_mode': 'url_mixed'});
 		so.modalonly = true;
+		so.retain = true;
 		so.validate = function(section_id, value) {
 			if (section_id && value && !/^https?:\/\/.+/.test(value))
 				return _('Expecting: %s').format(_('a valid URL starting with http:// or https://'));
@@ -465,6 +631,7 @@ return view.extend({
 		so.depends({'source': 'custom', 'custom_mode': 'url_ip'});
 		so.depends({'source': 'custom', 'custom_mode': 'url_mixed'});
 		so.modalonly = true;
+		so.retain = true;
 
 		so = ss.option(form.TextValue, 'custom_domains', _('Custom domains'),
 			_('One domain (or domain keyword) per line. Matches as a substring, same as the Proxy/Direct Domain List tabs.'));
@@ -473,6 +640,7 @@ return view.extend({
 		so.datatype = 'hostname';
 		so.depends({'source': 'custom', 'custom_mode': 'domains'});
 		so.modalonly = true;
+		so.retain = true;
 		so.validate = function(section_id, value) {
 			if (section_id && value)
 				for (let i of value.split('\n')) {
@@ -501,6 +669,7 @@ return view.extend({
 		so.depends('node', 'urltest');
 		so.rmempty = false;
 		so.modalonly = true;
+		so.retain = true;
 
 		so = ss.option(form.Value, 'urltest_interval', _('Test interval'),
 			_('The test interval in seconds.'));
@@ -508,6 +677,7 @@ return view.extend({
 		so.placeholder = '120';
 		so.depends('node', 'urltest');
 		so.modalonly = true;
+		so.retain = true;
 
 		so = ss.option(form.Value, 'urltest_tolerance', _('Test tolerance'),
 			_('The test tolerance in milliseconds.'));
@@ -515,12 +685,14 @@ return view.extend({
 		so.placeholder = '40';
 		so.depends('node', 'urltest');
 		so.modalonly = true;
+		so.retain = true;
 
 		so = ss.option(form.Flag, 'urltest_interrupt_exist_connections', _('Interrupt existing connections'));
 		so.default = so.enabled;
 		so.rmempty = false;
 		so.depends('node', 'urltest');
 		so.modalonly = true;
+		so.retain = true;
 
 		o = s.taboption('dashboard', form.Value, 'dashboard_port', _('Listen port'));
 		o.default = '9096';
@@ -573,26 +745,33 @@ return view.extend({
 
 		so = fwtool.addIPOption(ss, 'lan_ip_policy', 'lan_direct_ipv4_ips', _('Direct IPv4 IP-s'), null, 'ipv4', hosts, true);
 		so.depends({'lan_proxy_mode': 'except_listed'});
+		so.retain = true;
 
 		so = fwtool.addIPOption(ss, 'lan_ip_policy', 'lan_direct_ipv6_ips', _('Direct IPv6 IP-s'), null, 'ipv6', hosts, true);
 		so.depends({'lan_proxy_mode': 'except_listed', 'homeproxy.config.ipv6_support': '1'});
+		so.retain = true;
 
 		so = fwtool.addMACOption(ss, 'lan_ip_policy', 'lan_direct_mac_addrs', _('Direct MAC-s'), null, hosts);
 		so.depends({'lan_proxy_mode': 'except_listed'});
+		so.retain = true;
 
 		so = fwtool.addIPOption(ss, 'lan_ip_policy', 'lan_proxy_ipv4_ips', _('Proxy IPv4 IP-s'), null, 'ipv4', hosts, true);
 		so.depends({'lan_proxy_mode': 'listed_only'});
+		so.retain = true;
 
 		so = fwtool.addIPOption(ss, 'lan_ip_policy', 'lan_proxy_ipv6_ips', _('Proxy IPv6 IP-s'), null, 'ipv6', hosts, true);
 		so.depends({'lan_proxy_mode': 'listed_only', 'homeproxy.config.ipv6_support': '1'});
+		so.retain = true;
 
 		so = fwtool.addMACOption(ss, 'lan_ip_policy', 'lan_proxy_mac_addrs', _('Proxy MAC-s'), null, hosts);
 		so.depends({'lan_proxy_mode': 'listed_only'});
+		so.retain = true;
 
 		so = fwtool.addIPOption(ss, 'lan_ip_policy', 'lan_gaming_mode_ipv4_ips', _('Gaming mode IPv4 IP-s'), null, 'ipv4', hosts, true);
 
 		so = fwtool.addIPOption(ss, 'lan_ip_policy', 'lan_gaming_mode_ipv6_ips', _('Gaming mode IPv6 IP-s'), null, 'ipv6', hosts, true);
 		so.depends({'homeproxy.config.ipv6_support': '1'});
+		so.retain = true;
 
 		so = fwtool.addMACOption(ss, 'lan_ip_policy', 'lan_gaming_mode_mac_addrs', _('Gaming mode MAC-s'), null, hosts);
 
@@ -600,6 +779,7 @@ return view.extend({
 
 		so = fwtool.addIPOption(ss, 'lan_ip_policy', 'lan_global_proxy_ipv6_ips', _('Global proxy IPv6 IP-s'), null, 'ipv6', hosts, true);
 		so.depends({'homeproxy.config.ipv6_support': '1'});
+		so.retain = true;
 
 		so = fwtool.addMACOption(ss, 'lan_ip_policy', 'lan_global_proxy_mac_addrs', _('Global proxy MAC-s'), null, hosts);
 
@@ -611,6 +791,7 @@ return view.extend({
 		so = ss.taboption('wan_ip_policy', form.DynamicList, 'wan_proxy_ipv6_ips', _('Proxy IPv6 IP-s'));
 		so.datatype = 'or(ip6addr, cidr6)';
 		so.depends({'homeproxy.config.ipv6_support': '1'});
+		so.retain = true;
 
 		so = ss.taboption('wan_ip_policy', form.DynamicList, 'wan_direct_ipv4_ips', _('Direct IPv4 IP-s'));
 		so.datatype = 'or(ip4addr, cidr4)';
@@ -618,6 +799,7 @@ return view.extend({
 		so = ss.taboption('wan_ip_policy', form.DynamicList, 'wan_direct_ipv6_ips', _('Direct IPv6 IP-s'));
 		so.datatype = 'or(ip6addr, cidr6)';
 		so.depends({'homeproxy.config.ipv6_support': '1'});
+		so.retain = true;
 
 		ss.tab('proxy_domain_list', _('Proxy Domain List'));
 
@@ -626,15 +808,13 @@ return view.extend({
 		so.monospace = true;
 		so.datatype = 'hostname';
 		so.load = function() {
-			return L.resolveDefault(callReadDomainList('proxy_list')).then((res) => {
-				return res.content;
-			}, {});
+			return loadDomainList('proxy_list');
 		}
 		so.write = function(_section_id, value) {
-			return callWriteDomainList('proxy_list', value);
+			stageDomainList('proxy_list', value);
 		}
 		so.remove = function() {
-			return callWriteDomainList('proxy_list', '');
+			stageDomainList('proxy_list', '');
 		}
 		so.validate = function(section_id, value) {
 			if (section_id && value)
@@ -652,15 +832,13 @@ return view.extend({
 		so.monospace = true;
 		so.datatype = 'hostname';
 		so.load = function() {
-			return L.resolveDefault(callReadDomainList('direct_list')).then((res) => {
-				return res.content;
-			}, {});
+			return loadDomainList('direct_list');
 		}
 		so.write = function(_section_id, value) {
-			return callWriteDomainList('direct_list', value);
+			stageDomainList('direct_list', value);
 		}
 		so.remove = function() {
-			return callWriteDomainList('direct_list', '');
+			stageDomainList('direct_list', '');
 		}
 		so.validate = function(section_id, value) {
 			if (section_id && value)
