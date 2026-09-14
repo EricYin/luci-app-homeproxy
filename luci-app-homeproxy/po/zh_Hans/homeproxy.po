@@ -622,6 +622,12 @@ msgstr "核心管理"
 msgid "Current version"
 msgstr "当前版本"
 
+#: htdocs/luci-static/resources/view/homeproxy/client.js:264
+#: htdocs/luci-static/resources/view/homeproxy/client.js:638
+#: htdocs/luci-static/resources/view/homeproxy/client.js:644
+msgid "Custom"
+msgstr "自定义规则"
+
 #: htdocs/luci-static/resources/view/homeproxy/client.js:655
 msgid "Custom domains"
 msgstr "自定义域名"
