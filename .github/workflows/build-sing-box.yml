@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       publish_release:
-        description: 'Publish to GitHub Releases'
+        description: '发布到 GitHub Releases'
         type: boolean
         default: false
 
