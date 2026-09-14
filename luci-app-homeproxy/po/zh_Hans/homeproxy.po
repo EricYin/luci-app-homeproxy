@@ -588,12 +588,9 @@ msgid "CloudFlare Public DNS (1.1.1.1)"
 msgstr "CloudFlare 公共 DNS（1.1.1.1）"
 
 #: htdocs/luci-static/resources/view/homeproxy/server.js:760
-msgid "Cloudflare"
-msgstr "Cloudflare"
-
 #: htdocs/luci-static/resources/view/homeproxy/client.js:597
 msgid "Cloudflare"
-msgstr ""
+msgstr "Cloudflare"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:114
 #: htdocs/luci-static/resources/view/homeproxy/server.js:136
@@ -1035,12 +1032,9 @@ msgid "Google Public DNS (8.8.8.8)"
 msgstr "谷歌公共 DNS（8.8.8.8）"
 
 #: htdocs/luci-static/resources/view/homeproxy/status.js:238
-msgid "Google"
-msgstr "谷歌"
-
 #: htdocs/luci-static/resources/view/homeproxy/client.js:596
 msgid "Google"
-msgstr ""
+msgstr "谷歌"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:620
 #: htdocs/luci-static/resources/view/homeproxy/client.js:1108
@@ -1241,12 +1235,9 @@ msgstr "Let's Encrypt"
 #: htdocs/luci-static/resources/view/homeproxy/client.js:132
 #: htdocs/luci-static/resources/view/homeproxy/client.js:161
 #: htdocs/luci-static/resources/view/homeproxy/client.js:497
-msgid "List of nodes to test."
-msgstr "要测试的节点列表。"
-
 #: htdocs/luci-static/resources/view/homeproxy/client.js:683
 msgid "List of nodes to test."
-msgstr ""
+msgstr "要测试的节点列表。"
 
 #: htdocs/luci-static/resources/view/homeproxy/node.js:1221
 #: htdocs/luci-static/resources/view/homeproxy/server.js:685
@@ -1842,12 +1833,9 @@ msgid "Salamander"
 msgstr "Salamander"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:152
-msgid "Same as main node"
-msgstr "保持与主节点一致"
-
 #: htdocs/luci-static/resources/view/homeproxy/client.js:673
 msgid "Same as main node"
-msgstr ""
+msgstr "保持与主节点一致"
 
 #: htdocs/luci-static/resources/view/homeproxy/node.js:1579
 msgid "Save current settings"
@@ -2022,22 +2010,16 @@ msgstr "腾讯公共 DNS（119.29.29.29）"
 #: htdocs/luci-static/resources/view/homeproxy/client.js:138
 #: htdocs/luci-static/resources/view/homeproxy/client.js:167
 #: htdocs/luci-static/resources/view/homeproxy/client.js:530
-msgid "Test interval"
-msgstr "测试间隔"
-
 #: htdocs/luci-static/resources/view/homeproxy/client.js:690
 msgid "Test interval"
-msgstr ""
+msgstr "测试间隔"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:144
 #: htdocs/luci-static/resources/view/homeproxy/client.js:173
 #: htdocs/luci-static/resources/view/homeproxy/client.js:546
-msgid "Test tolerance"
-msgstr "测试容差"
-
 #: htdocs/luci-static/resources/view/homeproxy/client.js:697
 msgid "Test tolerance"
-msgstr ""
+msgstr "测试容差"
 
 #: htdocs/luci-static/resources/view/homeproxy/server.js:747
 msgid "The ACME CA provider to use."
@@ -2096,22 +2078,16 @@ msgstr "服务端公钥，需要 PEM 格式。"
 #: htdocs/luci-static/resources/view/homeproxy/client.js:139
 #: htdocs/luci-static/resources/view/homeproxy/client.js:168
 #: htdocs/luci-static/resources/view/homeproxy/client.js:531
-msgid "The test interval in seconds."
-msgstr "测试间隔时间（单位：秒）。"
-
 #: htdocs/luci-static/resources/view/homeproxy/client.js:691
 msgid "The test interval in seconds."
-msgstr ""
+msgstr "测试间隔时间（单位：秒）。"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:145
 #: htdocs/luci-static/resources/view/homeproxy/client.js:174
 #: htdocs/luci-static/resources/view/homeproxy/client.js:547
-msgid "The test tolerance in milliseconds."
-msgstr "测试容差时间（单位：毫秒）。"
-
 #: htdocs/luci-static/resources/view/homeproxy/client.js:698
 msgid "The test tolerance in milliseconds."
-msgstr ""
+msgstr "测试容差时间（单位：毫秒）。"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:593
 msgid "TikTok"
@@ -2187,12 +2163,9 @@ msgstr "UDP"
 #: htdocs/luci-static/resources/view/homeproxy/client.js:131
 #: htdocs/luci-static/resources/view/homeproxy/client.js:160
 #: htdocs/luci-static/resources/view/homeproxy/client.js:496
-msgid "URLTest nodes"
-msgstr "URLTest 节点"
-
 #: htdocs/luci-static/resources/view/homeproxy/client.js:682
 msgid "URLTest nodes"
-msgstr ""
+msgstr "URLTest 节点"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:124
 #: htdocs/luci-static/resources/view/homeproxy/client.js:153
@@ -2395,6 +2368,8 @@ msgstr "预定义名称(如 <code>hex</code>、<code>base62</code>)或字面字�
 
 #: htdocs/luci-static/resources/view/homeproxy/node.js:1063
 #: htdocs/luci-static/resources/view/homeproxy/server.js:585
+#: htdocs/luci-static/resources/view/homeproxy/node.js:906
+#: htdocs/luci-static/resources/view/homeproxy/server.js:481
 msgid "auto"
 msgstr "自动"
 
@@ -2659,11 +2634,6 @@ msgstr "您的 %s 已成功上传。大小：%sB。"
 msgid "ZeroSSL"
 msgstr "ZeroSSL"
 
-#: htdocs/luci-static/resources/view/homeproxy/node.js:906
-#: htdocs/luci-static/resources/view/homeproxy/server.js:481
-msgid "auto"
-msgstr "自动"
-
 #: htdocs/luci-static/resources/view/homeproxy/node.js:1275
 #: htdocs/luci-static/resources/view/homeproxy/server.js:891
 msgid "certificate"
@@ -2835,3 +2805,53 @@ msgstr "有效端口值"
 #: htdocs/luci-static/resources/homeproxy.js:328
 msgid "valid uuid"
 msgstr "有效 uuid"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js:172
+msgid "timeout"
+msgstr "超时"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js:190
+#: htdocs/luci-static/resources/view/homeproxy/client.js:197
+msgid "Invalid node"
+msgstr "无效节点"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js:191
+msgid "URLTest: %s"
+msgstr "URLTest：%s"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js:198
+msgid "UDP URLTest: %s"
+msgstr "UDP URLTest：%s"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js:274
+msgid "%s contains an invalid domain."
+msgstr "%s 包含无效的域名。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js:281
+msgid "Domain %s in %s conflicts with %s in %s."
+msgstr "域名 %s（位于 %s）与 %s（位于 %s）冲突。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js:566
+msgid "Port %s already exists!"
+msgstr "端口 %s 已存在！"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js:578
+msgid "To enable Tun support, you need to install <code>kmod-tun</code>"
+msgstr "要启用 Tun 支持，需要安装 <code>kmod-tun</code>"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js:677
+#: htdocs/luci-static/resources/view/homeproxy/client.js:689
+msgid "a valid URL starting with http:// or https://"
+msgstr "以 http:// 或 https:// 开头的合法链接"
+
+#: htdocs/luci-static/resources/view/homeproxy/status.js:153
+msgid "Loading..."
+msgstr "加载中..."
+
+#: htdocs/luci-static/resources/view/homeproxy/status.js:177
+msgid "Failed to save channel: %s"
+msgstr "保存频道失败：%s"
+
+#: htdocs/luci-static/resources/view/homeproxy/status.js:194
+msgid "Not detected"
+msgstr "未检测到"
