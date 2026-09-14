@@ -616,6 +616,12 @@ msgstr ""
 msgid "Current version"
 msgstr ""
 
+#: htdocs/luci-static/resources/view/homeproxy/client.js:264
+#: htdocs/luci-static/resources/view/homeproxy/client.js:638
+#: htdocs/luci-static/resources/view/homeproxy/client.js:644
+msgid "Custom"
+msgstr ""
+
 #: htdocs/luci-static/resources/view/homeproxy/client.js:655
 msgid "Custom domains"
 msgstr ""
