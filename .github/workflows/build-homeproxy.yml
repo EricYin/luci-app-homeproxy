@@ -88,15 +88,6 @@ jobs:
           echo "IPK_ASSET_NAME=$(ls luci-app-homeproxy_*_all.ipk)" >> $GITHUB_ENV
           popd
 
-      - name: Build legacy IPK (OpenWRT 23.05)
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-        run: |
-          mkdir -p .github/legacy
-          pushd .github
-          fakeroot bash build-ipk.sh ipk "${{ github.event_name }}" legacy
-          mv luci-*-legacy.ipk legacy/
-          popd
-
       - name: Publishing APK files to GitHub Artifacts
         uses: actions/upload-artifact@v7
         if: github.event_name != 'release'
@@ -117,20 +108,6 @@ jobs:
         with:
           name: homeproxy.pub
           path: .github/homeproxy.pub
-
-      - name: Publishing legacy draft release to GitHub Releases
-        uses: svenstaro/upload-release-action@v2
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-        with:
-          repo_token: ${{ github.token }}
-          file: .github/legacy/*.ipk
-          file_glob: true
-          overwrite: true
-          tag: ${{ steps.tag.outputs.release_tag }}-legacy
-          release_name: ${{ steps.tag.outputs.release_tag }}-legacy (OpenWRT 23.05)
-          prerelease: false
-          draft: false
-          body: "Legacy build for OpenWRT 23.05 — no ucode-mod-digest dependency."
 
       - name: Publishing draft pre-release to GitHub Releases
         uses: svenstaro/upload-release-action@v2
