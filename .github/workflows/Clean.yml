@@ -1,4 +1,4 @@
-name: Clean
+name: All-Clean
 
 on:
   # 手动清理
