@@ -1,4 +1,4 @@
-name: Build apk/ipk for luci-app-homeproxy
+name: Build luci-app-homeproxy
 
 on:
   workflow_dispatch:
