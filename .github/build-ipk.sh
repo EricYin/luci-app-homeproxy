@@ -5,7 +5,6 @@ set -o pipefail
 
 PKG_MGR="${1:-apk}"
 RELEASE_TYPE="${2:-snapshot}"
-LEGACY="${3:-}"
 
 PKG_URL="https://github.com/XiaoHaiSly/luci-app-homeproxy"
 PKG_MAINTAINER="XiaoHaiSly"
@@ -119,40 +118,7 @@ default_prerm' > "$TEMP_DIR/pre-deinstall"
 else
 	mkdir -p "$TEMP_PKG_DIR/CONTROL/"
 
-	if [ "$LEGACY" == "legacy" ]; then
-		SUBSC_UC="$TEMP_PKG_DIR/etc/homeproxy/scripts/update_subscriptions.uc"
-		cat > /tmp/hp_legacy_patch.py << 'PYEOF'
-import sys
-path = sys.argv[1]
-with open(path) as f:
-    c = f.read()
-c = c.replace("import { md5 } from 'digest';\n", "")
-c = c.replace("import { open } from 'fs';", "import { open, popen } from 'fs';")
-md5_fn = """
-function md5(s) {
-	const tmp = '/tmp/.hp_md5tmp';
-	const f = open(tmp, 'w');
-	if (!f) return '';
-	f.write(s);
-	f.close();
-	const fd = popen('md5sum < /tmp/.hp_md5tmp');
-	if (!fd) return '';
-	const out = trim(fd.read('line'));
-	fd.close();
-	return split(out, ' ')[0] || '';
-}
-
-"""
-c = c.replace("/* UCI config start */", md5_fn + "/* UCI config start */")
-with open(path, 'w') as f:
-    f.write(c)
-PYEOF
-		python3 /tmp/hp_legacy_patch.py "$SUBSC_UC"
-		rm -f /tmp/hp_legacy_patch.py
-		IPK_DEPS="libc, ${COMMON_DEPS_NOARCH/ucode-mod-digest /}, sing-box (>=1.14.0)"
-	else
-		IPK_DEPS="libc, ${COMMON_DEPS_NOARCH// /, }, sing-box (>=1.14.0)"
-	fi
+	IPK_DEPS="libc, ${COMMON_DEPS_NOARCH// /, }, sing-box (>=1.14.0)"
 
 	cat > "$TEMP_PKG_DIR/CONTROL/control" <<-EOF
 		Package: $PKG_NAME
@@ -195,11 +161,7 @@ default_prerm $0 $@' > "$TEMP_PKG_DIR/CONTROL/prerm"
 
 	ipkg-build -m "" "$TEMP_PKG_DIR" "$TEMP_DIR"
 
-	if [ "$LEGACY" == "legacy" ]; then
-		mv "$TEMP_DIR/${PKG_NAME}_${PKG_VERSION}_all.ipk" "$BASE_DIR/${PKG_NAME}_${PKG_VERSION}_all-legacy.ipk"
-	else
-		mv "$TEMP_DIR/${PKG_NAME}_${PKG_VERSION}_all.ipk" "$BASE_DIR/${PKG_NAME}_${PKG_VERSION}_all.ipk"
-	fi
+	mv "$TEMP_DIR/${PKG_NAME}_${PKG_VERSION}_all.ipk" "$BASE_DIR/${PKG_NAME}_${PKG_VERSION}_all.ipk"
 fi
 
 rm -rf "$TEMP_DIR"
