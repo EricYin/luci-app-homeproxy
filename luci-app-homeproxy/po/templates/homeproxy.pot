@@ -582,9 +582,6 @@ msgid "CloudFlare Public DNS (1.1.1.1)"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/server.js:760
-msgid "Cloudflare"
-msgstr ""
-
 #: htdocs/luci-static/resources/view/homeproxy/client.js:597
 msgid "Cloudflare"
 msgstr ""
@@ -1029,9 +1026,6 @@ msgid "Google Public DNS (8.8.8.8)"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/status.js:238
-msgid "Google"
-msgstr ""
-
 #: htdocs/luci-static/resources/view/homeproxy/client.js:596
 msgid "Google"
 msgstr ""
@@ -1235,9 +1229,6 @@ msgstr ""
 #: htdocs/luci-static/resources/view/homeproxy/client.js:132
 #: htdocs/luci-static/resources/view/homeproxy/client.js:161
 #: htdocs/luci-static/resources/view/homeproxy/client.js:497
-msgid "List of nodes to test."
-msgstr ""
-
 #: htdocs/luci-static/resources/view/homeproxy/client.js:683
 msgid "List of nodes to test."
 msgstr ""
@@ -1836,9 +1827,6 @@ msgid "Salamander"
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:152
-msgid "Same as main node"
-msgstr ""
-
 #: htdocs/luci-static/resources/view/homeproxy/client.js:673
 msgid "Same as main node"
 msgstr ""
@@ -2016,9 +2004,6 @@ msgstr ""
 #: htdocs/luci-static/resources/view/homeproxy/client.js:138
 #: htdocs/luci-static/resources/view/homeproxy/client.js:167
 #: htdocs/luci-static/resources/view/homeproxy/client.js:530
-msgid "Test interval"
-msgstr ""
-
 #: htdocs/luci-static/resources/view/homeproxy/client.js:690
 msgid "Test interval"
 msgstr ""
@@ -2026,9 +2011,6 @@ msgstr ""
 #: htdocs/luci-static/resources/view/homeproxy/client.js:144
 #: htdocs/luci-static/resources/view/homeproxy/client.js:173
 #: htdocs/luci-static/resources/view/homeproxy/client.js:546
-msgid "Test tolerance"
-msgstr ""
-
 #: htdocs/luci-static/resources/view/homeproxy/client.js:697
 msgid "Test tolerance"
 msgstr ""
@@ -2090,9 +2072,6 @@ msgstr ""
 #: htdocs/luci-static/resources/view/homeproxy/client.js:139
 #: htdocs/luci-static/resources/view/homeproxy/client.js:168
 #: htdocs/luci-static/resources/view/homeproxy/client.js:531
-msgid "The test interval in seconds."
-msgstr ""
-
 #: htdocs/luci-static/resources/view/homeproxy/client.js:691
 msgid "The test interval in seconds."
 msgstr ""
@@ -2100,9 +2079,6 @@ msgstr ""
 #: htdocs/luci-static/resources/view/homeproxy/client.js:145
 #: htdocs/luci-static/resources/view/homeproxy/client.js:174
 #: htdocs/luci-static/resources/view/homeproxy/client.js:547
-msgid "The test tolerance in milliseconds."
-msgstr ""
-
 #: htdocs/luci-static/resources/view/homeproxy/client.js:698
 msgid "The test tolerance in milliseconds."
 msgstr ""
@@ -2181,9 +2157,6 @@ msgstr ""
 #: htdocs/luci-static/resources/view/homeproxy/client.js:131
 #: htdocs/luci-static/resources/view/homeproxy/client.js:160
 #: htdocs/luci-static/resources/view/homeproxy/client.js:496
-msgid "URLTest nodes"
-msgstr ""
-
 #: htdocs/luci-static/resources/view/homeproxy/client.js:682
 msgid "URLTest nodes"
 msgstr ""
@@ -2389,6 +2362,8 @@ msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/node.js:1063
 #: htdocs/luci-static/resources/view/homeproxy/server.js:585
+#: htdocs/luci-static/resources/view/homeproxy/node.js:906
+#: htdocs/luci-static/resources/view/homeproxy/server.js:481
 msgid "auto"
 msgstr ""
 
@@ -2653,11 +2628,6 @@ msgstr ""
 msgid "ZeroSSL"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/homeproxy/node.js:906
-#: htdocs/luci-static/resources/view/homeproxy/server.js:481
-msgid "auto"
-msgstr ""
-
 #: htdocs/luci-static/resources/view/homeproxy/node.js:1275
 #: htdocs/luci-static/resources/view/homeproxy/server.js:891
 msgid "certificate"
@@ -2828,4 +2798,54 @@ msgstr ""
 
 #: htdocs/luci-static/resources/homeproxy.js:328
 msgid "valid uuid"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js:172
+msgid "timeout"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js:190
+#: htdocs/luci-static/resources/view/homeproxy/client.js:197
+msgid "Invalid node"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js:191
+msgid "URLTest: %s"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js:198
+msgid "UDP URLTest: %s"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js:274
+msgid "%s contains an invalid domain."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js:281
+msgid "Domain %s in %s conflicts with %s in %s."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js:566
+msgid "Port %s already exists!"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js:578
+msgid "To enable Tun support, you need to install <code>kmod-tun</code>"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js:677
+#: htdocs/luci-static/resources/view/homeproxy/client.js:689
+msgid "a valid URL starting with http:// or https://"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/status.js:153
+msgid "Loading..."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/status.js:177
+msgid "Failed to save channel: %s"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/status.js:194
+msgid "Not detected"
 msgstr ""
