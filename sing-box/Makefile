@@ -77,7 +77,7 @@ define Package/sing-box/description
   Sing-box is a universal proxy platform which supports hysteria, SOCKS, Shadowsocks,
   ShadowTLS, Tor, trojan, VLess, VMess, WireGuard and so on.
 
-  This build is compiled from the shtorm-7/sing-box-extended fork and additionally
+  This build is compiled from the sing-box-extended fork and additionally
   supports MASQUE, MTProxy, TrustTunnel, Sudoku, CCM/OCM, Call tunneling, OpenVPN,
   OpenConnect, USB/IP, and Cloudflared.
 endef
