@@ -2,6 +2,11 @@ name: Build Sing-Box
 
 on:
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Publish to GitHub Releases'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -247,6 +252,7 @@ jobs:
   release:
     name: Publish to Releases
     needs: [version, build]
+    if: inputs.publish_release == true
     runs-on: ubuntu-latest
     permissions:
       contents: write
