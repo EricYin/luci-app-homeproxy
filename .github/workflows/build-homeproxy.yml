@@ -2,6 +2,11 @@ name: Build apk/ipk for luci-app-homeproxy
 
 on:
   workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Publish to GitHub Releases'
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -111,7 +116,7 @@ jobs:
 
       - name: Publishing draft pre-release to GitHub Releases
         uses: svenstaro/upload-release-action@v2
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        if: inputs.publish_release == true
         with:
           repo_token: ${{ github.token }}
           file: .github/*.{apk,ipk,pub}
