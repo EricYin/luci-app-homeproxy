@@ -5,9 +5,9 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=sing-box
-PKG_UPSTREAM_VERSION:=1.14.0-extended-2.7.1
-PKG_VERSION:=1.14.0
-PKG_RELEASE:=271
+PKG_UPSTREAM_VERSION:=1.13.8-extended-2.6.1
+PKG_VERSION:=1.13.8
+PKG_RELEASE:=261
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_UPSTREAM_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/shtorm-7/sing-box-extended/tar.gz/v$(PKG_UPSTREAM_VERSION)?
