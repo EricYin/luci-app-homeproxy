@@ -12,22 +12,23 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       release_tag: ${{ steps.tag.outputs.release_tag }}
-      singbox_pkg_version: ${{ steps.singbox_ver.outputs.pkg_version }}
+      commit_message: ${{ steps.commit.outputs.message }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
       - name: Generate release tag
         id: tag
-        run: echo "release_tag=$(date -u +%Y.%m.%d)-r$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
+        run: echo "release_tag=homeproxy-$(date -u +%Y.%m.%d)-r$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Resolve sing-box version
-        id: singbox_ver
+      - name: Resolve commit message
+        id: commit
         run: |
-          pkg_version="$(sed -n 's/^PKG_VERSION:=//p' sing-box/Makefile)"
-          pkg_release="$(sed -n 's/^PKG_RELEASE:=//p' sing-box/Makefile)"
-          [[ -n "$pkg_version" && -n "$pkg_release" ]]
-          echo "pkg_version=${pkg_version}-r${pkg_release}" >> "$GITHUB_OUTPUT"
+          {
+            echo "message<<COMMIT_MSG_EOF"
+            git log -1 --pretty=%B
+            echo "COMMIT_MSG_EOF"
+          } >> "$GITHUB_OUTPUT"
 
   build-homeproxy:
     name: Build homeproxy (apk/ipk)
@@ -346,11 +347,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.tag.outputs.release_tag }}
-          TITLE: ${{ needs.tag.outputs.release_tag }} (homeproxy + sing-box ${{ needs.tag.outputs.singbox_pkg_version }})
+          TITLE: ${{ needs.tag.outputs.release_tag }}
+          NOTES: ${{ needs.tag.outputs.commit_message }}
         run: |
           cd "$RUNNER_TEMP/release"
 
+          printf '%s\n' "$NOTES" > "$RUNNER_TEMP/release_notes.txt"
+
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "$TITLE" \
-            --notes "Combined automated build: luci-app-homeproxy and sing-box (sing-box-extended) ${{ needs.tag.outputs.singbox_pkg_version }}." \
+            --notes-file "$RUNNER_TEMP/release_notes.txt" \
             -- * \
             || gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber -- *
