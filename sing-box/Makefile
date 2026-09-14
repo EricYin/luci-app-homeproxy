@@ -21,13 +21,24 @@ PKG_CPE_ID:=cpe:/a:sagernet:sing-box
 
 PKG_CONFIG_DEPENDS:= \
 	CONFIG_SING_BOX_TINY_BUILD_ACME \
+	CONFIG_SING_BOX_TINY_BUILD_CALL \
+	CONFIG_SING_BOX_TINY_BUILD_CCM \
 	CONFIG_SING_BOX_TINY_BUILD_CLASH_API \
+	CONFIG_SING_BOX_TINY_BUILD_CLOUDFLARED \
 	CONFIG_SING_BOX_TINY_BUILD_DHCP \
 	CONFIG_SING_BOX_TINY_BUILD_EMBEDDED_TOR \
 	CONFIG_SING_BOX_TINY_BUILD_GRPC \
 	CONFIG_SING_BOX_TINY_BUILD_GVISOR \
+	CONFIG_SING_BOX_TINY_BUILD_MASQUE \
+	CONFIG_SING_BOX_TINY_BUILD_MTPROXY \
+	CONFIG_SING_BOX_TINY_BUILD_OCM \
+	CONFIG_SING_BOX_TINY_BUILD_OPENCONNECT \
+	CONFIG_SING_BOX_TINY_BUILD_OPENVPN \
 	CONFIG_SING_BOX_TINY_BUILD_QUIC \
+	CONFIG_SING_BOX_TINY_BUILD_SUDOKU \
 	CONFIG_SING_BOX_TINY_BUILD_TAILSCALE \
+	CONFIG_SING_BOX_TINY_BUILD_TRUSTTUNNEL \
+	CONFIG_SING_BOX_TINY_BUILD_USBIP \
 	CONFIG_SING_BOX_TINY_BUILD_UTLS \
 	CONFIG_SING_BOX_TINY_BUILD_V2RAY_API \
 	CONFIG_SING_BOX_TINY_BUILD_WIREGUARD
@@ -49,7 +60,7 @@ define Package/sing-box/Default
   SUBMENU:=Web Servers/Proxies
   TITLE:=The universal proxy platform
   URL:=https://github.com/shtorm-7/sing-box-extended
-  DEPENDS:=+ca-bundle +kmod-inet-diag
+  DEPENDS:=+ca-bundle +kmod-inet-diag +firewall4 +kmod-nft-queue
   USERID:=sing-box=5566:sing-box=5566
 endef
 
@@ -65,6 +76,10 @@ endef
 define Package/sing-box/description
   Sing-box is a universal proxy platform which supports hysteria, SOCKS, Shadowsocks,
   ShadowTLS, Tor, trojan, VLess, VMess, WireGuard and so on.
+
+  This build is compiled from the shtorm-7/sing-box-extended fork and additionally
+  supports MASQUE, MTProxy, TrustTunnel, Sudoku, CCM/OCM, Call tunneling, OpenVPN,
+  OpenConnect, USB/IP, and Cloudflared.
 endef
 
 define Package/sing-box/config
@@ -87,9 +102,18 @@ define Package/sing-box-tiny/config
     config SING_BOX_TINY_BUILD_ACME
     bool "Build with ACME TLS certificate issuer support"
 
+    config SING_BOX_TINY_BUILD_CALL
+    bool "Build with Call (video-platform tunneling) support"
+
+    config SING_BOX_TINY_BUILD_CCM
+    bool "Build with CCM outbound group support"
+
     config SING_BOX_TINY_BUILD_CLASH_API
     bool "Build with Clash API support"
     default y
+
+    config SING_BOX_TINY_BUILD_CLOUDFLARED
+    bool "Build with Cloudflared support"
 
     config SING_BOX_TINY_BUILD_DHCP
     bool "Build with DHCP support"
@@ -107,6 +131,23 @@ define Package/sing-box-tiny/config
     bool "Build with gVisor support"
     default y if aarch64||arm||i386||x86_64
 
+    config SING_BOX_TINY_BUILD_MASQUE
+    bool "Build with MASQUE (Cloudflare, QUIC/HTTP-2) support"
+    default y
+
+    config SING_BOX_TINY_BUILD_MTPROXY
+    bool "Build with Telegram MTProxy support"
+    default y
+
+    config SING_BOX_TINY_BUILD_OCM
+    bool "Build with OCM outbound group support"
+
+    config SING_BOX_TINY_BUILD_OPENCONNECT
+    bool "Build with OpenConnect (Cisco AnyConnect and compatible) support"
+
+    config SING_BOX_TINY_BUILD_OPENVPN
+    bool "Build with OpenVPN client/server support"
+
     config SING_BOX_TINY_BUILD_QUIC
     bool "Build with QUIC support"
     default y
@@ -114,8 +155,22 @@ define Package/sing-box-tiny/config
       Required by HTTP3 DNS transports, Naive inbound,
       Hysteria inbound / outbound, and v2ray QUIC transport.
 
+    config SING_BOX_TINY_BUILD_SUDOKU
+    bool "Build with Sudoku obfuscation protocol support"
+    default y
+
     config SING_BOX_TINY_BUILD_TAILSCALE
     bool "Build with Tailscale support"
+
+    config SING_BOX_TINY_BUILD_TRUSTTUNNEL
+    bool "Build with TrustTunnel support"
+    default y
+
+    config SING_BOX_TINY_BUILD_USBIP
+    bool "Build with USB/IP client/server support"
+    help
+      Requires kernel-side USB/IP (vhci-hcd) support on the router to be
+      functional at runtime; the build tag alone only compiles the feature.
 
     config SING_BOX_TINY_BUILD_UTLS
     bool "Build with uTLS support"
@@ -131,18 +186,30 @@ define Package/sing-box-tiny/config
 endef
 
 ifeq ($(BUILD_VARIANT),full)
-  GO_PKG_TAGS:=http2legacy,with_acme,with_clash_api,with_dhcp,with_gvisor,with_quic,with_tailscale,with_utls,with_wireguard
+  GO_PKG_TAGS:=http2legacy,tfogo_checklinkname0,with_acme,with_call,with_ccm,with_clash_api,with_cloudflared,with_dhcp,with_gvisor,with_masque,with_mtproxy,with_ocm,with_openconnect,with_openvpn,with_quic,with_sudoku,with_tailscale,with_trusttunnel,with_usbip,with_utls,with_wireguard
 else
   GO_PKG_TAGS:=$(subst $(space),$(comma),$(strip \
 	http2legacy \
+	tfogo_checklinkname0 \
 	$(if $(CONFIG_SING_BOX_TINY_BUILD_ACME),with_acme) \
+	$(if $(CONFIG_SING_BOX_TINY_BUILD_CALL),with_call) \
+	$(if $(CONFIG_SING_BOX_TINY_BUILD_CCM),with_ccm) \
 	$(if $(CONFIG_SING_BOX_TINY_BUILD_CLASH_API),with_clash_api) \
+	$(if $(CONFIG_SING_BOX_TINY_BUILD_CLOUDFLARED),with_cloudflared) \
 	$(if $(CONFIG_SING_BOX_TINY_BUILD_DHCP),with_dhcp) \
 	$(if $(CONFIG_SING_BOX_TINY_BUILD_EMBEDDED_TOR),with_embedded_tor) \
 	$(if $(CONFIG_SING_BOX_TINY_BUILD_GRPC),with_grpc) \
 	$(if $(CONFIG_SING_BOX_TINY_BUILD_GVISOR),with_gvisor) \
+	$(if $(CONFIG_SING_BOX_TINY_BUILD_MASQUE),with_masque) \
+	$(if $(CONFIG_SING_BOX_TINY_BUILD_MTPROXY),with_mtproxy) \
+	$(if $(CONFIG_SING_BOX_TINY_BUILD_OCM),with_ocm) \
+	$(if $(CONFIG_SING_BOX_TINY_BUILD_OPENCONNECT),with_openconnect) \
+	$(if $(CONFIG_SING_BOX_TINY_BUILD_OPENVPN),with_openvpn) \
 	$(if $(CONFIG_SING_BOX_TINY_BUILD_QUIC),with_quic) \
+	$(if $(CONFIG_SING_BOX_TINY_BUILD_SUDOKU),with_sudoku) \
 	$(if $(CONFIG_SING_BOX_TINY_BUILD_TAILSCALE),with_tailscale) \
+	$(if $(CONFIG_SING_BOX_TINY_BUILD_TRUSTTUNNEL),with_trusttunnel) \
+	$(if $(CONFIG_SING_BOX_TINY_BUILD_USBIP),with_usbip) \
 	$(if $(CONFIG_SING_BOX_TINY_BUILD_UTLS),with_utls) \
 	$(if $(CONFIG_SING_BOX_TINY_BUILD_V2RAY_API),with_v2ray_api) \
 	$(if $(CONFIG_SING_BOX_TINY_BUILD_WIREGUARD),with_wireguard) \
