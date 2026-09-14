@@ -5,7 +5,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=sing-box
-PKG_UPSTREAM_VERSION:=1.14.0-extended-2.7.1
+PKG_UPSTREAM_VERSION:=1.14.0-extended-2.6.1
 PKG_VERSION:=1.14.0
 PKG_RELEASE:=271
 
