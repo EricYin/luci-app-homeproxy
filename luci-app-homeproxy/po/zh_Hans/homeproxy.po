@@ -2808,7 +2808,7 @@ msgstr "有效 uuid"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:172
 msgid "timeout"
-msgstr ""
+msgstr "超时"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:190
 #: htdocs/luci-static/resources/view/homeproxy/client.js:197
@@ -2817,27 +2817,27 @@ msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:191
 msgid "URLTest: %s"
-msgstr ""
+msgstr "URLTest：%s"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:198
 msgid "UDP URLTest: %s"
-msgstr ""
+msgstr "UDP URLTest：%s"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:274
 msgid "%s contains an invalid domain."
-msgstr ""
+msgstr "%s 包含无效的域名。"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:281
 msgid "Domain %s in %s conflicts with %s in %s."
-msgstr ""
+msgstr "域名 %s（位于 %s）与 %s（位于 %s）冲突。"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:566
 msgid "Port %s already exists!"
-msgstr ""
+msgstr "端口 %s 已存在！"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:578
 msgid "To enable Tun support, you need to install <code>kmod-tun</code>"
-msgstr ""
+msgstr "要启用 Tun 支持，需要安装 <code>kmod-tun</code>"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:677
 #: htdocs/luci-static/resources/view/homeproxy/client.js:689
@@ -2846,12 +2846,12 @@ msgstr "以 http:// 或 https:// 开头的合法链接"
 
 #: htdocs/luci-static/resources/view/homeproxy/status.js:153
 msgid "Loading..."
-msgstr ""
+msgstr "加载中..."
 
 #: htdocs/luci-static/resources/view/homeproxy/status.js:177
 msgid "Failed to save channel: %s"
-msgstr ""
+msgstr "保存频道失败：%s"
 
 #: htdocs/luci-static/resources/view/homeproxy/status.js:194
 msgid "Not detected"
-msgstr ""
+msgstr "未检测到"
