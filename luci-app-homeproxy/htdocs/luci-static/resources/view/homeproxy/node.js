@@ -310,7 +310,10 @@ function parseShareLink(uri, features) {
 					}
 				}
 
-				config.xhttp_method = xhttp_extra.method || params.get('method') || null;
+				config.xhttp_method = xhttp_extra.uplinkHTTPMethod || xhttp_extra.method || params.get('method') || null;
+				config.xhttp_domain_strategy = xhttp_extra.domainStrategy || params.get('domainStrategy') || null;
+				config.xhttp_congestion_controller = xhttp_extra.congestionController || params.get('congestionController') || null;
+				config.xhttp_cwnd = xhttp_extra.cwnd || params.get('cwnd') || null;
 				if (xhttp_extra.headers) {
 					config.xhttp_headers = [];
 					for (let k in xhttp_extra.headers)
@@ -340,9 +343,43 @@ function parseShareLink(uri, features) {
 				config.xhttp_uplink_data_key = xhttp_extra.uplinkDataKey || null;
 				config.xhttp_uplink_chunk_size = xhttp_extra.uplinkChunkSize || null;
 
-				if (xhttp_extra.downloadSettings) {
-					config.xhttp_download_host = xhttp_extra.downloadSettings.host || null;
-					config.xhttp_download_path = xhttp_extra.downloadSettings.path || null;
+				if (xhttp_extra.downloadSettings || xhttp_extra.download) {
+					let dl = xhttp_extra.downloadSettings || xhttp_extra.download;
+					config.xhttp_download_host = dl.host || null;
+					config.xhttp_download_path = dl.path || null;
+					config.xhttp_download_server = dl.address || dl.server || null;
+					config.xhttp_download_server_port = dl.port || dl.server_port || null;
+					config.xhttp_download_domain_strategy = dl.domainStrategy || null;
+					config.xhttp_download_padding_bytes = dl.xPaddingBytes || null;
+					config.xhttp_download_method = dl.uplinkHTTPMethod || dl.method || null;
+					config.xhttp_download_congestion_controller = dl.congestionController || null;
+					config.xhttp_download_cwnd = dl.cwnd || null;
+					config.xhttp_download_no_grpc_header = (dl.noGRPCHeader === true) ? '1' : null;
+					if (dl.headers) {
+						config.xhttp_download_headers = [];
+						for (let k in dl.headers)
+							config.xhttp_download_headers.push(k + ': ' + dl.headers[k]);
+					}
+					config.xhttp_download_x_padding_obfs_mode = (dl.xPaddingObfsMode === true) ? '1' : null;
+					config.xhttp_download_x_padding_placement = dl.xPaddingPlacement || null;
+					config.xhttp_download_x_padding_key = dl.xPaddingKey || null;
+					config.xhttp_download_x_padding_header = dl.xPaddingHeader || null;
+					config.xhttp_download_x_padding_method = dl.xPaddingMethod || null;
+					config.xhttp_download_session_placement = dl.sessionPlacement || null;
+					config.xhttp_download_session_key = dl.sessionKey || null;
+					config.xhttp_download_seq_placement = dl.seqPlacement || null;
+					config.xhttp_download_seq_key = dl.seqKey || null;
+					config.xhttp_download_uplink_data_placement = dl.uplinkDataPlacement || null;
+					config.xhttp_download_uplink_data_key = dl.uplinkDataKey || null;
+					config.xhttp_download_uplink_chunk_size = dl.uplinkChunkSize || null;
+					if (dl.xmux) {
+						config.xhttp_download_xmux_max_concurrency = dl.xmux.maxConcurrency || null;
+						config.xhttp_download_xmux_max_connections = dl.xmux.maxConnections || null;
+						config.xhttp_download_xmux_c_max_reuse_times = dl.xmux.cMaxReuseTimes || null;
+						config.xhttp_download_xmux_h_max_request_times = dl.xmux.hMaxRequestTimes || null;
+						config.xhttp_download_xmux_h_max_reusable_secs = dl.xmux.hMaxReusableSecs || null;
+						config.xhttp_download_xmux_h_keep_alive_period = dl.xmux.hKeepAlivePeriod || null;
+					}
 				}
 
 				if (xhttp_extra.xmux) {
@@ -910,6 +947,16 @@ function renderNodeSettings(section, data, features, main_node) {
 	o.depends('transport', 'xhttp');
 	o.modalonly = true;
 
+	o = s.option(form.ListValue, 'xhttp_domain_strategy', _('Domain strategy'),
+		_('How to resolve the server address before dialing. Empty uses the outbound default.'));
+	o.value('', _('default'));
+	o.value('prefer_ipv4');
+	o.value('prefer_ipv6');
+	o.value('ipv4_only');
+	o.value('ipv6_only');
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
 	o = s.option(form.Value, 'xhttp_host', _('Host'));
 	o.depends('transport', 'xhttp');
 	o.modalonly = true;
@@ -973,7 +1020,25 @@ function renderNodeSettings(section, data, features, main_node) {
 	o.modalonly = true;
 
 	o = s.option(form.Value, 'xhttp_method', _('Uplink method'),
-		_('HTTP method used for uplink POST requests. Defaults to <code>POST</code>.'));
+		_('HTTP method used for uplink POST requests. Defaults to <code>POST</code>. Client only.'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.ListValue, 'xhttp_congestion_controller', _('Congestion controller'),
+		_('h3 (QUIC/HTTP3) only.'));
+	o.value('', _('default'));
+	o.value('bbr');
+	o.value('bbr_standard');
+	o.value('bbr2');
+	o.value('bbr2_variant');
+	o.value('cubic');
+	o.value('reno');
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_cwnd', _('Initial congestion window'),
+		_('h3 only. Initial congestion window in packets. Default 32.'));
+	o.datatype = 'uinteger';
 	o.depends('transport', 'xhttp');
 	o.modalonly = true;
 
@@ -989,6 +1054,157 @@ function renderNodeSettings(section, data, features, main_node) {
 
 	o = s.option(form.Value, 'xhttp_download_path', _('Download path'),
 		_('Path used for the separate stream-down download leg, if different from the main Path.'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_download_server', _('Download server'),
+		_('Server address for the download leg, if it should go to a different host entirely (e.g. a separate CDN endpoint). Leave empty to use the main server.'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_download_server_port', _('Download server port'));
+	o.datatype = 'port';
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.ListValue, 'xhttp_download_domain_strategy', _('Download domain strategy'));
+	o.value('', _('default'));
+	o.value('prefer_ipv4');
+	o.value('prefer_ipv6');
+	o.value('ipv4_only');
+	o.value('ipv6_only');
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_download_padding_bytes', _('Download padding bytes'),
+		_('Range of random padding size for the download leg. Falls back to the main padding bytes above if left empty.'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Flag, 'xhttp_download_tls', _('Download TLS'),
+		_('Enable a separate TLS configuration for the download leg. Only needed if the download server/host differs from the main one.'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_download_tls_server_name', _('Download TLS server name'));
+	o.depends({'transport': 'xhttp', 'xhttp_download_tls': '1'});
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_download_tls_alpn', _('Download TLS ALPN'));
+	o.depends({'transport': 'xhttp', 'xhttp_download_tls': '1'});
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_download_detour', _('Download detour'),
+		_('Tag of another outbound to route the download leg through.'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	/* Download inherits the base xhttp options struct in full, so every
+	 * obfuscation knob available on the main leg can also be set
+	 * independently for the download leg. Mirrored here so download can be
+	 * fully self-contained when it points at a different server/CDN. */
+	o = s.option(form.DynamicList, 'xhttp_download_headers', _('Download headers'),
+		_('Extra HTTP request/response headers for the download leg, one <code>Key: Value</code> pair per line.'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_download_method', _('Download uplink method'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.ListValue, 'xhttp_download_congestion_controller', _('Download congestion controller'),
+		_('h3 (QUIC/HTTP3) only.'));
+	o.value('', _('default'));
+	o.value('bbr');
+	o.value('bbr_standard');
+	o.value('bbr2');
+	o.value('bbr2_variant');
+	o.value('cubic');
+	o.value('reno');
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_download_cwnd', _('Download initial congestion window'));
+	o.datatype = 'uinteger';
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Flag, 'xhttp_download_no_grpc_header', _('Download disable gRPC header'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Flag, 'xhttp_download_x_padding_obfs_mode', _('Download padding obfuscation mode'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_download_x_padding_placement', _('Download padding placement'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_download_x_padding_key', _('Download padding key'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_download_x_padding_header', _('Download padding header'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_download_x_padding_method', _('Download padding method'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_download_session_placement', _('Download session placement'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_download_session_key', _('Download session key'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_download_seq_placement', _('Download seq placement'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_download_seq_key', _('Download seq key'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_download_uplink_data_placement', _('Download uplink data placement'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_download_uplink_data_key', _('Download uplink data key'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_download_uplink_chunk_size', _('Download uplink chunk size'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_download_xmux_max_concurrency', _('Download xmux max concurrency'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_download_xmux_max_connections', _('Download xmux max connections'));
+	o.datatype = 'uinteger';
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_download_xmux_c_max_reuse_times', _('Download xmux max reuse times'));
+	o.datatype = 'uinteger';
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_download_xmux_h_max_request_times', _('Download xmux h2/h3 max request times'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_download_xmux_h_max_reusable_secs', _('Download xmux h2/h3 max reusable secs'));
+	o.depends('transport', 'xhttp');
+	o.modalonly = true;
+
+	o = s.option(form.Value, 'xhttp_download_xmux_h_keep_alive_period', _('Download xmux h2/h3 keep-alive period'));
+	o.datatype = 'uinteger';
 	o.depends('transport', 'xhttp');
 	o.modalonly = true;
 

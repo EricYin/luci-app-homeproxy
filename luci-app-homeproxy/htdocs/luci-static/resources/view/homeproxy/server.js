@@ -498,8 +498,26 @@ return view.extend({
 		o.depends('transport', 'xhttp');
 		o.modalonly = true;
 
-		o = s.option(form.Value, 'xhttp_method', _('Uplink method'),
-			_('HTTP method expected for uplink POST requests. Defaults to <code>POST</code>.'));
+		o = s.option(form.DynamicList, 'xhttp_trusted_x_forwarded_for', _('Trusted X-Forwarded-For'),
+			_('IPs/CIDRs of trusted reverse proxies allowed to set the client IP via X-Forwarded-For.'));
+		o.depends('transport', 'xhttp');
+		o.modalonly = true;
+
+		o = s.option(form.ListValue, 'xhttp_congestion_controller', _('Congestion controller'),
+			_('h3 (QUIC/HTTP3) only.'));
+		o.value('', _('default'));
+		o.value('bbr');
+		o.value('bbr_standard');
+		o.value('bbr2');
+		o.value('bbr2_variant');
+		o.value('cubic');
+		o.value('reno');
+		o.depends('transport', 'xhttp');
+		o.modalonly = true;
+
+		o = s.option(form.Value, 'xhttp_cwnd', _('Initial congestion window'),
+			_('h3 only. Initial congestion window in packets. Default 32.'));
+		o.datatype = 'uinteger';
 		o.depends('transport', 'xhttp');
 		o.modalonly = true;
 
@@ -511,16 +529,6 @@ return view.extend({
 		o = s.option(form.Value, 'xhttp_server_max_header_bytes', _('Max header bytes'),
 			_('Limits the size of HTTP request headers accepted by the server. Default <code>8192</code>.'));
 		o.datatype = 'uinteger';
-		o.depends('transport', 'xhttp');
-		o.modalonly = true;
-
-		o = s.option(form.Value, 'xhttp_download_host', _('Download host'),
-			_('Host expected on the separate stream-down download leg, if different from the main Host.'));
-		o.depends('transport', 'xhttp');
-		o.modalonly = true;
-
-		o = s.option(form.Value, 'xhttp_download_path', _('Download path'),
-			_('Path expected on the separate stream-down download leg, if different from the main Path.'));
 		o.depends('transport', 'xhttp');
 		o.modalonly = true;
 

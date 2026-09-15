@@ -402,7 +402,12 @@ function generate_outbound(node) {
 			headers: node.ws_host ? {
 				Host: node.ws_host
 			} : ((node.transport === 'xhttp') ? parseHeaderList(node.xhttp_headers) : null),
-			method: (node.transport === 'xhttp') ? (node.xhttp_method || null) : node.http_method,
+			/* "method" is only a real field on the plain http transport
+			 * (V2RayHTTPOptions.Method). xhttp's equivalent is a different,
+			 * separately-named field (uplink_http_method) below - emitting it
+			 * as "method" is not a field sing-box-extended's xhttp schema
+			 * recognizes and gets rejected by strict decoding. */
+			method: (node.transport === 'http') ? node.http_method : null,
 			max_early_data: strToInt(node.websocket_early_data),
 			early_data_header_name: node.websocket_early_data_header,
 			service_name: node.grpc_servicename,
@@ -411,10 +416,14 @@ function generate_outbound(node) {
 			permit_without_stream: strToBool(node.grpc_permit_without_stream),
 
 			mode: (node.transport === 'xhttp') ? (node.xhttp_mode || null) : null,
+			domain_strategy: (node.transport === 'xhttp') ? (node.xhttp_domain_strategy || null) : null,
 			x_padding_bytes: (node.transport === 'xhttp') ? xhttp_padding(node.xhttp_padding_bytes) : null,
 			no_grpc_header: (node.transport === 'xhttp') ? strToBool(node.xhttp_no_grpc_header) : null,
 			sc_max_each_post_bytes: (node.transport === 'xhttp') ? strToInt(node.xhttp_sc_max_each_post_bytes) : null,
 			sc_min_posts_interval_ms: (node.transport === 'xhttp') ? strToInt(node.xhttp_sc_min_posts_interval_ms) : null,
+			uplink_http_method: (node.transport === 'xhttp') ? (node.xhttp_method || null) : null,
+			congestion_controller: (node.transport === 'xhttp') ? (node.xhttp_congestion_controller || null) : null,
+			cwnd: (node.transport === 'xhttp') ? strToInt(node.xhttp_cwnd) : null,
 
 			x_padding_obfs_mode: (node.transport === 'xhttp') ? strToBool(node.xhttp_x_padding_obfs_mode) : null,
 			x_padding_placement: (node.transport === 'xhttp') ? (node.xhttp_x_padding_placement || null) : null,
@@ -434,9 +443,60 @@ function generate_outbound(node) {
 			uplink_data_key: (node.transport === 'xhttp') ? (node.xhttp_uplink_data_key || null) : null,
 			uplink_chunk_size: (node.transport === 'xhttp') ? (node.xhttp_uplink_chunk_size || null) : null,
 
-			download_settings: (node.transport === 'xhttp' && (node.xhttp_download_host || node.xhttp_download_path)) ? {
-				host: node.xhttp_download_host,
-				path: node.xhttp_download_path
+			/* The real field name is "download" (V2RayXHTTPOptions.Download),
+			 * not "download_settings" - the old key was silently dropped/
+			 * rejected by the core and the download leg never actually took
+			 * effect. Download inherits the same base options struct as the
+			 * main transport, so if the core's XPaddingBytes validity check
+			 * runs against it too (present whenever "download" is non-null) -
+			 * it must always carry a valid x_padding_bytes, so fall back to
+			 * the main leg's padding when no download-specific value is set. */
+			download: (node.transport === 'xhttp' && (node.xhttp_download_host || node.xhttp_download_path || node.xhttp_download_server)) ? {
+				host: node.xhttp_download_host || null,
+				path: node.xhttp_download_path || null,
+				headers: parseHeaderList(node.xhttp_download_headers),
+				domain_strategy: node.xhttp_download_domain_strategy || null,
+				x_padding_bytes: xhttp_padding(node.xhttp_download_padding_bytes || node.xhttp_padding_bytes),
+				uplink_http_method: node.xhttp_download_method || null,
+				congestion_controller: node.xhttp_download_congestion_controller || null,
+				cwnd: strToInt(node.xhttp_download_cwnd),
+				no_grpc_header: strToBool(node.xhttp_download_no_grpc_header),
+
+				x_padding_obfs_mode: strToBool(node.xhttp_download_x_padding_obfs_mode),
+				x_padding_placement: node.xhttp_download_x_padding_placement || null,
+				x_padding_key: node.xhttp_download_x_padding_key || null,
+				x_padding_header: node.xhttp_download_x_padding_header || null,
+				x_padding_method: node.xhttp_download_x_padding_method || null,
+
+				session_placement: node.xhttp_download_session_placement || null,
+				session_key: node.xhttp_download_session_key || null,
+
+				seq_placement: node.xhttp_download_seq_placement || null,
+				seq_key: node.xhttp_download_seq_key || null,
+
+				uplink_data_placement: node.xhttp_download_uplink_data_placement || null,
+				uplink_data_key: node.xhttp_download_uplink_data_key || null,
+				uplink_chunk_size: node.xhttp_download_uplink_chunk_size || null,
+
+				xmux: (node.xhttp_download_xmux_max_concurrency || node.xhttp_download_xmux_max_connections ||
+					node.xhttp_download_xmux_c_max_reuse_times || node.xhttp_download_xmux_h_max_request_times ||
+					node.xhttp_download_xmux_h_max_reusable_secs || node.xhttp_download_xmux_h_keep_alive_period) ? {
+					max_concurrency: node.xhttp_download_xmux_max_concurrency,
+					max_connections: strToInt(node.xhttp_download_xmux_max_connections),
+					c_max_reuse_times: strToInt(node.xhttp_download_xmux_c_max_reuse_times),
+					h_max_request_times: node.xhttp_download_xmux_h_max_request_times,
+					h_max_reusable_secs: node.xhttp_download_xmux_h_max_reusable_secs,
+					h_keep_alive_period: strToInt(node.xhttp_download_xmux_h_keep_alive_period)
+				} : null,
+
+				server: node.xhttp_download_server || null,
+				server_port: strToInt(node.xhttp_download_server_port),
+				tls: (node.xhttp_download_tls === '1') ? {
+					enabled: true,
+					server_name: node.xhttp_download_tls_server_name,
+					alpn: node.xhttp_download_tls_alpn
+				} : null,
+				detour: node.xhttp_download_detour || null
 			} : null,
 
 			xmux: (node.transport === 'xhttp') ? {

@@ -955,7 +955,10 @@ function parse_uri(uri) {
 					}
 				}
 
-				config.xhttp_method = xhttp_extra.method || params.method || null;
+				config.xhttp_method = xhttp_extra.uplinkHTTPMethod || xhttp_extra.method || params.method || null;
+				config.xhttp_domain_strategy = xhttp_extra.domainStrategy || params.domainStrategy || null;
+				config.xhttp_congestion_controller = xhttp_extra.congestionController || params.congestionController || null;
+				config.xhttp_cwnd = xhttp_extra.cwnd || params.cwnd || null;
 				if (xhttp_extra.headers) {
 					config.xhttp_headers = [];
 					for (let k, v in xhttp_extra.headers)
@@ -985,9 +988,43 @@ function parse_uri(uri) {
 				config.xhttp_uplink_data_key = xhttp_extra.uplinkDataKey || null;
 				config.xhttp_uplink_chunk_size = xhttp_extra.uplinkChunkSize || null;
 
-				if (xhttp_extra.downloadSettings) {
-					config.xhttp_download_host = xhttp_extra.downloadSettings.host || null;
-					config.xhttp_download_path = xhttp_extra.downloadSettings.path || null;
+				if (xhttp_extra.downloadSettings || xhttp_extra.download) {
+					let dl = xhttp_extra.downloadSettings || xhttp_extra.download;
+					config.xhttp_download_host = dl.host || null;
+					config.xhttp_download_path = dl.path || null;
+					config.xhttp_download_server = dl.address || dl.server || null;
+					config.xhttp_download_server_port = dl.port || dl.server_port || null;
+					config.xhttp_download_domain_strategy = dl.domainStrategy || null;
+					config.xhttp_download_padding_bytes = dl.xPaddingBytes || null;
+					config.xhttp_download_method = dl.uplinkHTTPMethod || dl.method || null;
+					config.xhttp_download_congestion_controller = dl.congestionController || null;
+					config.xhttp_download_cwnd = dl.cwnd || null;
+					config.xhttp_download_no_grpc_header = (dl.noGRPCHeader === true) ? '1' : null;
+					if (dl.headers) {
+						config.xhttp_download_headers = [];
+						for (let k, v in dl.headers)
+							push(config.xhttp_download_headers, sprintf('%s: %s', k, v));
+					}
+					config.xhttp_download_x_padding_obfs_mode = (dl.xPaddingObfsMode === true) ? '1' : null;
+					config.xhttp_download_x_padding_placement = dl.xPaddingPlacement || null;
+					config.xhttp_download_x_padding_key = dl.xPaddingKey || null;
+					config.xhttp_download_x_padding_header = dl.xPaddingHeader || null;
+					config.xhttp_download_x_padding_method = dl.xPaddingMethod || null;
+					config.xhttp_download_session_placement = dl.sessionPlacement || null;
+					config.xhttp_download_session_key = dl.sessionKey || null;
+					config.xhttp_download_seq_placement = dl.seqPlacement || null;
+					config.xhttp_download_seq_key = dl.seqKey || null;
+					config.xhttp_download_uplink_data_placement = dl.uplinkDataPlacement || null;
+					config.xhttp_download_uplink_data_key = dl.uplinkDataKey || null;
+					config.xhttp_download_uplink_chunk_size = dl.uplinkChunkSize || null;
+					if (dl.xmux) {
+						config.xhttp_download_xmux_max_concurrency = dl.xmux.maxConcurrency || null;
+						config.xhttp_download_xmux_max_connections = dl.xmux.maxConnections || null;
+						config.xhttp_download_xmux_c_max_reuse_times = dl.xmux.cMaxReuseTimes || null;
+						config.xhttp_download_xmux_h_max_request_times = dl.xmux.hMaxRequestTimes || null;
+						config.xhttp_download_xmux_h_max_reusable_secs = dl.xmux.hMaxReusableSecs || null;
+						config.xhttp_download_xmux_h_keep_alive_period = dl.xmux.hKeepAlivePeriod || null;
+					}
 				}
 
 				if (xhttp_extra.xmux) {
