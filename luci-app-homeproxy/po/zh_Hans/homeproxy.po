@@ -911,10 +911,6 @@ msgstr "保存频道失败：%s"
 msgid "Failed to upload %s, error: %s."
 msgstr "上传 %s 失败，错误：%s。"
 
-#: htdocs/luci-static/resources/view/homeproxy/server.js:551
-msgid "Falls back to the main padding bytes above if left empty."
-msgstr "留空则回退使用上方主填充字节数。"
-
 #: htdocs/luci-static/resources/view/homeproxy/status.js:140
 msgid "Fatal"
 msgstr "致命"
@@ -1014,16 +1010,6 @@ msgstr "H2 PING 间隔(秒)。0 使用 30 秒默认值,-1 禁用。仅客户端�
 msgid "HTTP"
 msgstr "HTTP"
 
-#: htdocs/luci-static/resources/view/homeproxy/server.js:502
-msgid "HTTP method expected for uplink POST requests. Defaults to <code>POST</code>."
-msgstr "上行 POST 请求所期望的 HTTP 方法,默认为 <code>POST</code>。"
-
-#: htdocs/luci-static/resources/view/homeproxy/server.js:502
-msgid ""
-"HTTP method expected for uplink POST requests. Defaults to "
-"<code>POST</code>. Not enforced by the server, informational only."
-msgstr "预期上行 POST 请求使用的 HTTP 方法,默认为 <code>POST</code>。服务端不做强制校验,仅供参考。"
-
 #: htdocs/luci-static/resources/view/homeproxy/node.js:976
 msgid "HTTP method used for uplink POST requests. Defaults to <code>POST</code>."
 msgstr "上行 POST 请求使用的 HTTP 方法,默认为 <code>POST</code>。"
@@ -1117,12 +1103,6 @@ msgstr "跳跃端口"
 #: htdocs/luci-static/resources/view/homeproxy/server.js:488
 msgid "Host"
 msgstr "主机名"
-
-#: htdocs/luci-static/resources/view/homeproxy/server.js:518
-msgid ""
-"Host expected on the separate stream-down download leg, if different from "
-"the main Host."
-msgstr "独立下行下载通道所期望的 Host,若与主 Host 不同时填写。"
 
 #: htdocs/luci-static/resources/view/homeproxy/node.js:692
 msgid "Host key"
@@ -1708,12 +1688,6 @@ msgstr "密码"
 #: htdocs/luci-static/resources/view/homeproxy/server.js:492
 msgid "Path"
 msgstr "路径"
-
-#: htdocs/luci-static/resources/view/homeproxy/server.js:523
-msgid ""
-"Path expected on the separate stream-down download leg, if different from "
-"the main Path."
-msgstr "独立下行下载通道所期望的路径,若与主路径不同时填写。"
 
 #: htdocs/luci-static/resources/view/homeproxy/node.js:991
 msgid ""

@@ -907,10 +907,6 @@ msgstr ""
 msgid "Failed to upload %s, error: %s."
 msgstr ""
 
-#: htdocs/luci-static/resources/view/homeproxy/server.js:551
-msgid "Falls back to the main padding bytes above if left empty."
-msgstr ""
-
 #: htdocs/luci-static/resources/view/homeproxy/status.js:140
 msgid "Fatal"
 msgstr ""
@@ -1010,16 +1006,6 @@ msgstr ""
 msgid "HTTP"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/homeproxy/server.js:502
-msgid "HTTP method expected for uplink POST requests. Defaults to <code>POST</code>."
-msgstr ""
-
-#: htdocs/luci-static/resources/view/homeproxy/server.js:502
-msgid ""
-"HTTP method expected for uplink POST requests. Defaults to "
-"<code>POST</code>. Not enforced by the server, informational only."
-msgstr ""
-
 #: htdocs/luci-static/resources/view/homeproxy/node.js:976
 msgid "HTTP method used for uplink POST requests. Defaults to <code>POST</code>."
 msgstr ""
@@ -1112,12 +1098,6 @@ msgstr ""
 #: htdocs/luci-static/resources/view/homeproxy/server.js:457
 #: htdocs/luci-static/resources/view/homeproxy/server.js:488
 msgid "Host"
-msgstr ""
-
-#: htdocs/luci-static/resources/view/homeproxy/server.js:518
-msgid ""
-"Host expected on the separate stream-down download leg, if different from "
-"the main Host."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/node.js:692
@@ -1703,12 +1683,6 @@ msgstr ""
 #: htdocs/luci-static/resources/view/homeproxy/server.js:461
 #: htdocs/luci-static/resources/view/homeproxy/server.js:492
 msgid "Path"
-msgstr ""
-
-#: htdocs/luci-static/resources/view/homeproxy/server.js:523
-msgid ""
-"Path expected on the separate stream-down download leg, if different from "
-"the main Path."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/node.js:991
