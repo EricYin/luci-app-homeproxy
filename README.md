@@ -4,10 +4,11 @@
 - 优化核心配置管理和加载流程
 - 重构 TUN 模式流量处理逻辑
 - 修复订阅链接无法正常更新节点的bug
-- 新增XHTTP支持
 - 新增DNS Fallback
+- 新增XHTTP支持
+- 新增分流模式
 - 新增sing-box面板
 - 新增更新核心功能
 - 优化 LuCI 管理界面和使用体验
 
-要求 sing-box 版本 ≥ 1.14.0
+要求 sing-box-extended版本 ≥ 1.14.0
