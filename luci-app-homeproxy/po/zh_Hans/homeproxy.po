@@ -1813,7 +1813,7 @@ msgstr "代理 MAC 地址"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:559
 msgid "Proxy Rules"
-msgstr "分流策略"
+msgstr "分流规则"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:1424
 msgid "Proxy all except listed"
