@@ -26,7 +26,7 @@ curl_get() {
 
 mkdir -p "$CACHE_DIR" 2>"/dev/null"
 
-release_info="$(curl_get "$GH_API/repos/shtorm-7/sing-box-extended/releases?per_page=30")"
+release_info="$(curl_get "$GH_API/repos/SagerNet/sing-box/releases?per_page=30")"
 [ -n "$release_info" ] || skip "Failed to access API, keeping local cache.db"
 
 singbox_tag=""
@@ -40,7 +40,7 @@ singbox_ver_num="${singbox_tag#v}"
 tmp_dir="$(mktemp -d)"
 
 curl -fsSL --connect-timeout 8 --max-time 60 --retry 2 --retry-delay 2 \
-	"https://github.com/shtorm-7/sing-box-extended/releases/download/$singbox_tag/sing-box-$singbox_ver_num-linux-amd64.tar.gz" \
+	"https://github.com/SagerNet/sing-box/releases/download/$singbox_tag/sing-box-$singbox_ver_num-linux-amd64.tar.gz" \
 	-o "$tmp_dir/sing-box.tar.gz"
 [ -s "$tmp_dir/sing-box.tar.gz" ] || { rm -rf "$tmp_dir"; skip "Failed to download sing-box binary, keeping local cache.db"; }
 
