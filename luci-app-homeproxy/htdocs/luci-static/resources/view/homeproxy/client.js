@@ -360,7 +360,7 @@ return view.extend({
 		o.retain = true;
 
 		o = s.taboption('routing', form.Flag, 'main_urltest_interrupt_exist_connections', _('Interrupt existing connections'));
-		o.default = o.enabled;
+		o.default = o.disabled;
 		o.rmempty = false;
 		o.depends('main_node', 'urltest');
 		o.retain = true;
@@ -397,7 +397,7 @@ return view.extend({
 		o.retain = true;
 
 		o = s.taboption('routing', form.Flag, 'main_udp_urltest_interrupt_exist_connections', _('Interrupt existing connections'));
-		o.default = o.enabled;
+		o.default = o.disabled;
 		o.rmempty = false;
 		o.depends('main_udp_node', 'urltest');
 		o.retain = true;
@@ -756,7 +756,7 @@ return view.extend({
 		so.retain = true;
 
 		so = ss.option(form.Flag, 'urltest_interrupt_exist_connections', _('Interrupt existing connections'));
-		so.default = so.enabled;
+		so.default = so.disabled;
 		so.rmempty = false;
 		so.depends('node', 'urltest');
 		so.modalonly = true;
