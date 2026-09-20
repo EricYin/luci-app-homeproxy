@@ -1811,7 +1811,7 @@ msgstr "代理 IPv6 地址"
 msgid "Proxy MAC-s"
 msgstr "代理 MAC 地址"
 
-#: htdocs/luci-static/resources/view/homeproxy/client.js:559
+#: htdocs/luci-static/resources/view/homeproxy/client.js:608
 msgid "Routing Rules"
 msgstr "分流规则"
 
