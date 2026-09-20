@@ -605,7 +605,7 @@ return view.extend({
 		o.default = o.enabled;
 		o.rmempty = false;
 
-		s.tab('app_rules', _('Proxy Rules'));
+		s.tab('app_rules', _('Routing Rules'));
 		o = s.taboption('app_rules', form.SectionValue, '_app_rules', form.GridSection, 'app_rule');
 		o.depends('routing_mode', 'bypass_mainland_china');
 
