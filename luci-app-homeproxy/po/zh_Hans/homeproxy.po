@@ -200,7 +200,7 @@ msgstr "自动更新"
 
 #: htdocs/luci-static/resources/view/homeproxy/node.js:1520
 msgid "Auto update subscriptions and geodata."
-msgstr "自动更新订阅和地理数据。"
+msgstr "自动更新订阅"
 
 #: htdocs/luci-static/resources/view/homeproxy/node.js:723
 msgid "BBR"
@@ -298,7 +298,7 @@ msgstr "国内 DNS 服务器"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:521
 msgid "China DNS server (fallback)"
-msgstr "中国 DNS 服务器（备用）"
+msgstr "国内 DNS 服务器（备用）"
 
 #: htdocs/luci-static/resources/view/homeproxy/node.js:1249
 #: htdocs/luci-static/resources/view/homeproxy/server.js:705
@@ -1812,7 +1812,7 @@ msgid "Proxy MAC-s"
 msgstr "代理 MAC 地址"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:559
-msgid "Proxy Rules"
+msgid "Routing Rules"
 msgstr "分流规则"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:1424
