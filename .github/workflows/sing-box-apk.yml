@@ -16,10 +16,10 @@ jobs:
       matrix:
         include:
           - platform_name: ARM64
-            sdk_path: qualcommax/ipq60xx
-            sdk_prefix: immortalwrt-sdk-qualcommax-ipq60xx_
-            target: qualcommax
-            subtarget: ipq60xx
+            sdk_path: airoha/an7583
+            sdk_prefix: immortalwrt-sdk-airoha-an7583_
+            target: airoha
+            subtarget: an7583
           - platform_name: AMD64
             sdk_path: x86/64
             sdk_prefix: immortalwrt-sdk-x86-64_
