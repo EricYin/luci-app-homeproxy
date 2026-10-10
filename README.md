@@ -9,7 +9,7 @@
 | `luci-app-homeproxy/` | LuCI 界面与服务脚本 |
 | `sing-box/` | sing-box-extended 核心 |
 
-## 主要特性
+## 主要增强
 
 - **TUN 模式**：统一使用 TUN 入站并启用 `auto_redirect`，TCP/UDP 均由 sing-box 处理
 - **分流规则**：按服务单独指定出口。内置 YouTube、TikTok、Telegram、Twitter/X、Google、Cloudflare、GitHub、AI 服务（非大陆）等预设，也可自定义规则；每条规则可单独选择走主节点、独立 URLTest、指定节点、直连或拒绝，并同步为该规则的域名选用对应的 DNS。支持拖动排序和单条启停，规则按顺序匹配。
