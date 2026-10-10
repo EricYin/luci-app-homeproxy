@@ -7,7 +7,7 @@
 | 目录 | 说明 |
 | --- | --- |
 | `luci-app-homeproxy/` | LuCI 界面与服务脚本 |
-| `sing-box/` | sing-box（extended）核心的 OpenWrt 编译 Makefile |
+| `sing-box/` | sing-box-extended |
 
 ## 主要特性
 
