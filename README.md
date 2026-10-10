@@ -30,7 +30,7 @@
 ## 运行要求
 
 - OpenWrt / ImmortalWrt（需使用 firewall4）
-- **sing-box-extended ≥ 1.14.0**（普通官方版本缺少部分功能，请使用本仓库 `sing-box/` 编译的版本，或自行引用本仓库进行编译）
+- **sing-box-extended ≥ 1.14.0**（官方版本缺少部分功能，请使用本仓库 `sing-box/` 编译的版本，或自行引用本仓库进行编译）
 
 ### 从源码编译
 
