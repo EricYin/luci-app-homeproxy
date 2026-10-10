@@ -7,7 +7,7 @@
 | 目录 | 说明 |
 | --- | --- |
 | `luci-app-homeproxy/` | LuCI 界面与服务脚本 |
-| `sing-box/` | sing-box-extended |
+| `sing-box/` | sing-box-extended 核心 |
 
 ## 主要特性
 
