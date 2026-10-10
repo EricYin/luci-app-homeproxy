@@ -1,6 +1,6 @@
 # luci-app-homeproxy
 
-基于 [ImmortalWrt HomeProxy](https://github.com/immortalwrt/homeproxy) 修改的 OpenWrt 代理客户端，以 [sing-box](https://github.com/SagerNet/sing-box) 为核心，提供 LuCI 管理界面。
+基于 [homeproxy](https://github.com/immortalwrt/homeproxy) 修改的 OpenWrt 代理客户端，以 [sing-box](https://github.com/shtorm-7/sing-box-extended) 为核心，提供 LuCI 管理界面。
 
 本仓库包含两个软件包：
 
@@ -54,4 +54,4 @@ make package/sing-box/compile V=s
 本项目以 GPL-2.0 协议发布，详见 [LICENSE](LICENSE)。
 
 - [immortalwrt/homeproxy](https://github.com/immortalwrt/homeproxy)：本项目的上游
-- [SagerNet/sing-box](https://github.com/SagerNet/sing-box)：代理核心
+- [shtorm-7/sing-box](https://github.com/shtorm-7/sing-box-extended)：代理核心
