@@ -30,7 +30,14 @@ const allow_insecure = uci.get(uciconfig, ucisubscription, 'allow_insecure') || 
       packet_encoding = uci.get(uciconfig, ucisubscription, 'packet_encoding') || 'xudp',
       subscription_urls = uci.get(uciconfig, ucisubscription, 'subscription_url') || [],
       user_agent = uci.get(uciconfig, ucisubscription, 'user_agent'),
-      via_proxy = uci.get(uciconfig, ucisubscription, 'update_via_proxy') || '0';
+      via_proxy = uci.get(uciconfig, ucisubscription, 'update_via_proxy') || '0',
+      mixed_port = uci.get(uciconfig, 'infra', 'mixed_port') || '5330',
+      proxy_url = (via_proxy === '1') ? `http://127.0.0.1:${mixed_port}` : null;
+
+const ua_list = [];
+for (let ua in [user_agent || 'v2rayNG', 'v2rayNG'])
+	if (!(ua in ua_list))
+		push(ua_list, ua);
 
 function filter_check(name) {
 	if (isEmpty(name) || filter_mode === 'disabled' || isEmpty(filter_keywords))
@@ -1121,6 +1128,72 @@ function parse_uri(uri) {
 	return config;
 }
 
+function fetch_subscription(url, ua, groupHash) {
+	const res = curlGET(url, ua, proxy_url);
+	if (isEmpty(res)) {
+		log(sprintf('Failed to fetch resources from %s (User-Agent: %s).', url, ua));
+		return 0;
+	}
+
+	let nodes;
+	const mihomo_nodes = parse_mihomo_yaml(res);
+	if (mihomo_nodes) {
+		nodes = mihomo_nodes;
+	} else {
+		try {
+			nodes = json(res).servers || json(res);
+
+			if (type(nodes) === 'array' && length(nodes) && type(nodes[0]) === 'object' && nodes[0].server && nodes[0].method)
+				map(nodes, (_, i) => nodes[i].nodetype = 'sip008');
+		} catch(e) {
+			nodes = decodeBase64Str(res);
+			nodes = nodes ? split(trim(replace(nodes, / /g, '_')), '\n') : [];
+		}
+	}
+
+	let count = 0;
+	for (let node in nodes) {
+		let config;
+		if (!isEmpty(node))
+			config = parse_uri(node);
+		if (isEmpty(config))
+			continue;
+
+		const label = config.label;
+		config.label = null;
+		const confHash = md5(sprintf('%J', config)),
+		      nameHash = md5(label);
+		config.label = label;
+		const idHash = md5(confHash + nameHash);
+		config.confhash = idHash;
+
+		if (filter_check(config.label))
+			log(sprintf('Skipping blacklist node: %s.', config.label));
+		else if (node_cache[groupHash][idHash])
+			log(sprintf('Skipping duplicate node: %s.', config.label));
+		else {
+			if (config.tls === '1' && allow_insecure === '1')
+				config.tls_insecure = '1';
+			if (config.type in ['vless', 'vmess'])
+				config.packet_encoding = packet_encoding;
+
+			config.grouphash = groupHash;
+			push(node_result, []);
+			push(node_result[length(node_result)-1], config);
+			node_cache[groupHash][idHash] = config;
+
+			count++;
+		}
+	}
+
+	if (count == 0)
+		log(sprintf('No valid node found in %s (User-Agent: %s).', url, ua));
+	else
+		log(sprintf('Successfully fetched %s nodes of total %s from %s.', count, length(nodes), url));
+
+	return count;
+}
+
 function main() {
 	if (via_proxy !== '1') {
 		log('Stopping service...');
@@ -1132,67 +1205,12 @@ function main() {
 		const groupHash = md5(url);
 		node_cache[groupHash] = {};
 
-		const res = curlGET(url, user_agent);
-		if (isEmpty(res)) {
-			log(sprintf('Failed to fetch resources from %s.', url));
-			continue;
+		for (let i = 0; i < length(ua_list); i++) {
+			if (fetch_subscription(url, ua_list[i], groupHash) > 0)
+				break;
+			if (i + 1 < length(ua_list))
+				log(sprintf('Retrying %s with User-Agent: %s.', url, ua_list[i + 1]));
 		}
-
-		let nodes;
-		const mihomo_nodes = parse_mihomo_yaml(res);
-		if (mihomo_nodes) {
-			nodes = mihomo_nodes;
-		} else {
-			try {
-				nodes = json(res).servers || json(res);
-
-				if (type(nodes) === 'array' && length(nodes) && type(nodes[0]) === 'object' && nodes[0].server && nodes[0].method)
-					map(nodes, (_, i) => nodes[i].nodetype = 'sip008');
-			} catch(e) {
-				nodes = decodeBase64Str(res);
-				nodes = nodes ? split(trim(replace(nodes, / /g, '_')), '\n') : [];
-			}
-		}
-
-		let count = 0;
-		for (let node in nodes) {
-			let config;
-			if (!isEmpty(node))
-				config = parse_uri(node);
-			if (isEmpty(config))
-				continue;
-
-			const label = config.label;
-			config.label = null;
-			const confHash = md5(sprintf('%J', config)),
-			      nameHash = md5(label);
-			config.label = label;
-			const idHash = md5(confHash + nameHash);
-			config.confhash = idHash;
-
-			if (filter_check(config.label))
-				log(sprintf('Skipping blacklist node: %s.', config.label));
-			else if (node_cache[groupHash][idHash])
-				log(sprintf('Skipping duplicate node: %s.', config.label));
-			else {
-				if (config.tls === '1' && allow_insecure === '1')
-					config.tls_insecure = '1';
-				if (config.type in ['vless', 'vmess'])
-					config.packet_encoding = packet_encoding;
-
-				config.grouphash = groupHash;
-				push(node_result, []);
-				push(node_result[length(node_result)-1], config);
-				node_cache[groupHash][idHash] = config;
-
-				count++;
-			}
-		}
-
-		if (count == 0)
-			log(sprintf('No valid node found in %s.', url));
-		else
-			log(sprintf('Successfully fetched %s nodes of total %s from %s.', count, length(nodes), url));
 	}
 
 	if (isEmpty(node_result)) {
