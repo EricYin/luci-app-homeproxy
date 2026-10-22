@@ -205,6 +205,72 @@ function get_header_host(headers) {
 	return headers.Host || headers.host || headers['HOST'];
 }
 
+/* Map one mihomo xhttp options object (xhttp-opts or its download-settings)
+ * onto the xhttp_* / xhttp_download_* UCI options. */
+function apply_mihomo_xhttp_opts(config, prefix, opts) {
+	if (type(opts) !== 'object')
+		return;
+
+	const set = (name, value) => {
+		if (has_value(value))
+			config[prefix + name] = (type(value) === 'bool') ? bool_to_uci(value) : to_string(value);
+	};
+
+	set('host', has_value(opts.host) ? opts.host : get_header_host(opts.headers));
+	set('path', normalize_first(opts.path));
+
+	if (type(opts.headers) === 'object' && length(opts.headers)) {
+		config[prefix + 'headers'] = [];
+		for (let k, v in opts.headers)
+			push(config[prefix + 'headers'], sprintf('%s: %s', k, v));
+	}
+
+	set('no_grpc_header', opts['no-grpc-header']);
+	set('padding_bytes', opts['x-padding-bytes']);
+	set('x_padding_obfs_mode', opts['x-padding-obfs-mode']);
+	set('x_padding_key', opts['x-padding-key']);
+	set('x_padding_header', opts['x-padding-header']);
+	set('x_padding_placement', opts['x-padding-placement']);
+	set('x_padding_method', opts['x-padding-method']);
+	set('method', opts['uplink-http-method']);
+	set('session_placement', opts['session-placement']);
+	set('session_key', opts['session-key']);
+	set('seq_placement', opts['seq-placement']);
+	set('seq_key', opts['seq-key']);
+	set('uplink_data_placement', opts['uplink-data-placement']);
+	set('uplink_data_key', opts['uplink-data-key']);
+	set('uplink_chunk_size', opts['uplink-chunk-size'] || null);
+	set('domain_strategy', opts['domain-strategy']);
+	set('congestion_controller', opts['congestion-controller']);
+	set('cwnd', opts.cwnd || null);
+
+	/* main xhttp only */
+	if (prefix === 'xhttp_') {
+		set('sc_max_each_post_bytes', opts['sc-max-each-post-bytes']);
+		set('sc_min_posts_interval_ms', opts['sc-min-posts-interval-ms']);
+		set('session_id_table', opts['session-id-table']);
+		set('session_id_length', opts['session-id-length']);
+	}
+}
+
+/* mihomo reuse-settings (XMUX), kebab-case keys. */
+function apply_mihomo_xhttp_xmux(config, prefix, xmux) {
+	if (type(xmux) !== 'object')
+		return;
+
+	const keys = {
+		max_concurrency: 'max-concurrency',
+		max_connections: 'max-connections',
+		c_max_reuse_times: 'c-max-reuse-times',
+		h_max_request_times: 'h-max-request-times',
+		h_max_reusable_secs: 'h-max-reusable-secs',
+		h_keep_alive_period: 'h-keep-alive-period'
+	};
+	for (let k, mk in keys)
+		if (has_value(xmux[mk]))
+			config[`${prefix}_${k}`] = to_string(xmux[mk]);
+}
+
 function apply_transport_opts(config, proxy) {
 	const network = proxy.network;
 	if (!has_value(network) || network === 'tcp')
@@ -218,6 +284,12 @@ function apply_transport_opts(config, proxy) {
 
 	switch (network) {
 	case 'ws':
+		if (ws_opts['v2ray-http-upgrade'] === true) {
+			config.transport = 'httpupgrade';
+			config.httpupgrade_host = get_header_host(ws_opts.headers);
+			config.http_path = ws_opts.path ? to_string(ws_opts.path) : null;
+			break;
+		}
 		config.transport = 'ws';
 		config.ws_path = ws_opts.path ? to_string(ws_opts.path) : null;
 		config.ws_host = get_header_host(ws_opts.headers);
@@ -241,14 +313,54 @@ function apply_transport_opts(config, proxy) {
 		config.http_path = normalize_first(httpupgrade_opts.path);
 		break;
 	case 'xhttp':
-	case 'splithttp':
+	case 'splithttp': {
 		config.transport = 'xhttp';
-		config.xhttp_host = get_header_host(xhttp_opts.headers) || to_string(xhttp_opts.host);
-		config.xhttp_path = normalize_first(xhttp_opts.path);
 		config.xhttp_mode = xhttp_opts.mode ? to_string(xhttp_opts.mode) : null;
+		apply_mihomo_xhttp_opts(config, 'xhttp_', xhttp_opts);
+		apply_mihomo_xhttp_xmux(config, 'xhttp_xmux', xhttp_opts['reuse-settings'] || xhttp_opts.xmux);
+
+		const dl = xhttp_opts['download-settings'];
+		if (type(dl) === 'object') {
+			apply_mihomo_xhttp_opts(config, 'xhttp_download_', dl);
+			apply_mihomo_xhttp_xmux(config, 'xhttp_download_xmux', dl['reuse-settings'] || dl.xmux);
+
+			config.xhttp_download_server = has_value(dl.server) ? to_string(dl.server) : null;
+			config.xhttp_download_server_port = has_value(dl.port) ? to_string(dl.port) : null;
+			if (dl.tls === true) {
+				config.xhttp_download_tls = '1';
+				config.xhttp_download_tls_server_name = dl.servername || dl.sni || null;
+				config.xhttp_download_tls_alpn = normalize_alpn(dl.alpn);
+			}
+		}
 		break;
 	}
+	}
 }
+/* hysteria2 hop-interval: seconds, or a "min-max" range (HomeProxy has no max, keep min). */
+function normalize_hop_interval(value) {
+	if (!has_value(value))
+		return null;
+
+	const m = match(to_string(value), /^(\d+)(-\d+)?s?$/);
+	return m ? m[1] : null;
+}
+
+/* mihomo smux -> multiplex_* (only for protocols sing-box can multiplex). */
+function apply_mihomo_smux(config, proxy) {
+	const smux = proxy.smux;
+	if (type(smux) !== 'object' || smux.enabled !== true)
+		return;
+	if (!(config.type in ['shadowsocks', 'vmess', 'vless', 'trojan']))
+		return;
+
+	config.multiplex = '1';
+	config.multiplex_protocol = has_value(smux.protocol) ? to_string(smux.protocol) : null;
+	config.multiplex_max_connections = to_string(smux['max-connections'] || null);
+	config.multiplex_min_streams = to_string(smux['min-streams'] || null);
+	config.multiplex_max_streams = to_string(smux['max-streams'] || null);
+	config.multiplex_padding = bool_to_uci(smux.padding);
+}
+
 function parse_mihomo_proxy(proxy) {
 	if (type(proxy) !== 'object')
 		return null;
@@ -323,6 +435,7 @@ function parse_mihomo_proxy(proxy) {
 			hysteria_up_mbps: parse_mihomo_speed(proxy.up),
 			hysteria_obfs_type: proxy.obfs,
 			hysteria_obfs_password: proxy['obfs-password'],
+			hysteria_hop_interval: normalize_hop_interval(proxy['hop-interval']),
 			tls: '1',
 			tls_sni,
 			tls_alpn: normalize_alpn(proxy.alpn),
@@ -344,6 +457,9 @@ function parse_mihomo_proxy(proxy) {
 			hysteria_hopping_port: normalize_mihomo_ports(proxy.ports),
 			hysteria_auth_type: proxy['auth-str'] ? 'string' : (proxy.auth ? 'base64' : null),
 			hysteria_auth_payload: proxy['auth-str'] || proxy.auth,
+			hysteria_recv_window_conn: to_string(proxy['recv-window-conn'] || null),
+			hysteria_recv_window: to_string(proxy['recv-window'] || null),
+			hysteria_disable_mtu_discovery: bool_to_uci(proxy['disable-mtu-discovery']),
 			hysteria_obfs_password: proxy.obfs,
 			hysteria_down_mbps: parse_mihomo_speed(proxy.down),
 			hysteria_up_mbps: parse_mihomo_speed(proxy.up),
@@ -470,7 +586,7 @@ function parse_mihomo_proxy(proxy) {
 			tuic_congestion_control: proxy['congestion-controller'],
 			tuic_udp_relay_mode: proxy['udp-relay-mode'],
 			tuic_udp_over_stream: bool_to_uci(proxy['udp-over-stream']),
-			tuic_enable_zero_rtt: bool_to_uci(proxy['zero-rtt-handshake']),
+			tuic_enable_zero_rtt: bool_to_uci(has_value(proxy['reduce-rtt']) ? proxy['reduce-rtt'] : proxy['zero-rtt-handshake']),
 			tuic_heartbeat: has_value(tuic_heartbeat) ? to_string(tuic_heartbeat) : null,
 			tls: '1',
 			tls_sni: proxy['disable-sni'] ? null : tls_sni,
@@ -497,6 +613,13 @@ function parse_mihomo_proxy(proxy) {
 		};
 		break;
 	case 'wireguard': {
+		/* HomeProxy models a single peer: use the first entry of `peers` when present. */
+		let wg_peer = proxy;
+		if (type(proxy.peers) === 'array' && length(proxy.peers) && type(proxy.peers[0]) === 'object') {
+			wg_peer = proxy.peers[0];
+			if (length(proxy.peers) > 1)
+				log(sprintf('WireGuard node %s has multiple peers, only the first one is used.', proxy.name || proxy.server));
+		}
 		let wg_addresses = [];
 		if (has_value(proxy.ip))
 			push(wg_addresses, to_string(proxy.ip));
@@ -505,13 +628,13 @@ function parse_mihomo_proxy(proxy) {
 		config = {
 			label: proxy.name,
 			type: 'wireguard',
-			address: proxy.server,
-			port: to_string(proxy.port),
+			address: has_value(wg_peer.server) ? wg_peer.server : proxy.server,
+			port: to_string(has_value(wg_peer.port) ? wg_peer.port : proxy.port),
 			wireguard_local_address: length(wg_addresses) ? wg_addresses : null,
 			wireguard_private_key: proxy['private-key'],
-			wireguard_peer_public_key: proxy['public-key'],
-			wireguard_pre_shared_key: proxy['pre-shared-key'],
-			wireguard_reserved: normalize_list(proxy.reserved),
+			wireguard_peer_public_key: wg_peer['public-key'],
+			wireguard_pre_shared_key: wg_peer['pre-shared-key'],
+			wireguard_reserved: normalize_list(wg_peer.reserved),
 			wireguard_mtu: to_string(proxy.mtu),
 			wireguard_persistent_keepalive_interval: to_string(proxy['persistent-keepalive'] || proxy['persistent-keepalive-interval'] || proxy.keepalive)
 		};
@@ -520,6 +643,8 @@ function parse_mihomo_proxy(proxy) {
 	default:
 		return null;
 	}
+
+	apply_mihomo_smux(config, proxy);
 
 	return config;
 }
