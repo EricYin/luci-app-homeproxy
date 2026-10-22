@@ -374,7 +374,7 @@ function parse_mihomo_proxy(proxy) {
 
 	switch (proxy.type) {
 	case 'anytls': {
-		let anytls_fp = (proxy['client-fingerprint'] !== null && proxy['client-fingerprint'] !== undefined) ?
+		let anytls_fp = (proxy['client-fingerprint'] !== null) ?
 			proxy['client-fingerprint'] : proxy.fingerprint;
 		anytls_fp = to_string(anytls_fp);
 		if (anytls_fp === 'none' || anytls_fp === 'disable' || anytls_fp === 'disabled')
