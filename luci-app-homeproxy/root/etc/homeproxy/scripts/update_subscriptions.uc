@@ -35,7 +35,7 @@ const allow_insecure = uci.get(uciconfig, ucisubscription, 'allow_insecure') || 
       proxy_url = (via_proxy === '1') ? `http://127.0.0.1:${mixed_port}` : null;
 
 const ua_list = [];
-for (let ua in [user_agent || 'v2rayNG', 'v2rayNG'])
+for (let ua in [user_agent || 'v2rayNG', 'clash.meta'])
 	if (!(ua in ua_list))
 		push(ua_list, ua);
 
@@ -629,6 +629,229 @@ function yaml_flow_to_json(s) {
 	return out;
 }
 
+function yaml_strip_comment(line) {
+	if (index(line, '#') < 0)
+		return rtrim(line);
+
+	let quote = null;
+	const n = length(line);
+	for (let i = 0; i < n; i++) {
+		const c = substr(line, i, 1);
+		if (quote) {
+			if (c === '\\' && quote === '"')
+				i++;
+			else if (c === quote)
+				quote = null;
+		} else if (c === '"' || c === "'") {
+			if (i === 0 || match(substr(line, i - 1, 1), /[ \t\[\{,:]/))
+				quote = c;
+		} else if (c === '#' && (i === 0 || match(substr(line, i - 1, 1), /[ \t]/))) {
+			return rtrim(substr(line, 0, i));
+		}
+	}
+
+	return rtrim(line);
+}
+
+function yaml_is_item(text) {
+	return text === '-' || substr(text, 0, 2) === '- ';
+}
+
+function yaml_unquote_key(key) {
+	key = trim(key);
+	const c = substr(key, 0, 1);
+	if ((c === '"' || c === "'") && length(key) >= 2 && substr(key, -1) === c)
+		return substr(key, 1, length(key) - 2);
+	return key;
+}
+
+/* Split "key: value" at the first colon followed by whitespace/end. */
+function yaml_split_kv(text) {
+	const first = substr(text, 0, 1);
+	if (first === '{' || first === '[')
+		return null;
+
+	const n = length(text);
+	let i = 0;
+
+	if (first === '"' || first === "'") {
+		i = 1;
+		while (i < n && substr(text, i, 1) !== first) {
+			if (first === '"' && substr(text, i, 1) === '\\')
+				i++;
+			i++;
+		}
+		i++;
+		if (i >= n || substr(text, i, 1) !== ':')
+			return null;
+
+		const rest = substr(text, i + 1);
+		if (rest !== '' && !match(substr(rest, 0, 1), /[ \t]/))
+			return null;
+
+		return [ yaml_unquote_key(substr(text, 0, i)), trim(rest) ];
+	}
+
+	while (i < n) {
+		if (substr(text, i, 1) === ':' && (i + 1 === n || match(substr(text, i + 1, 1), /[ \t]/)))
+			return [ trim(substr(text, 0, i)), trim(substr(text, i + 1)) ];
+		i++;
+	}
+
+	return null;
+}
+
+/* Numbers stay strings on purpose (keeps leading zeros, e.g. short-id). */
+function yaml_scalar(value) {
+	value = trim(value);
+
+	if (value === '' || value === '~' || value === 'null' || value === 'Null' || value === 'NULL')
+		return null;
+	if (value === 'true' || value === 'True' || value === 'TRUE')
+		return true;
+	if (value === 'false' || value === 'False' || value === 'FALSE')
+		return false;
+
+	const c = substr(value, 0, 1);
+	if (c === '"') {
+		let parsed = null;
+		try {
+			parsed = json(value);
+		} catch(e) {
+			parsed = null;
+		}
+		return (type(parsed) === 'string') ? parsed : substr(value, 1, length(value) - 2);
+	}
+	if (c === "'")
+		return replace(substr(value, 1, length(value) - 2), "''", "'");
+	if (c === '[' || c === '{') {
+		let parsed = null;
+		try {
+			parsed = json(yaml_flow_to_json(value));
+		} catch(e) {
+			parsed = null;
+		}
+		return (parsed !== null) ? parsed : value;
+	}
+
+	return value;
+}
+
+/* Parse a block-style YAML node (list / map / scalar) out of indent-aware tokens. */
+function yaml_parse_node(tokens, st, ind) {
+	const t = tokens[st.pos];
+
+	if (yaml_is_item(t.text)) {
+		const arr = [];
+		while (st.pos < length(tokens)) {
+			const it = tokens[st.pos];
+			if (it.indent !== ind || !yaml_is_item(it.text))
+				break;
+
+			const rest = ltrim(substr(it.text, 1));
+			if (rest === '') {
+				st.pos++;
+				const nt = tokens[st.pos];
+				push(arr, (nt && nt.indent > ind) ? yaml_parse_node(tokens, st, nt.indent) : null);
+			} else {
+				const content_indent = ind + (length(it.text) - length(rest));
+				tokens[st.pos] = { indent: content_indent, text: rest };
+				push(arr, yaml_parse_node(tokens, st, content_indent));
+			}
+		}
+		return arr;
+	}
+
+	if (yaml_split_kv(t.text)) {
+		const obj = {};
+		while (st.pos < length(tokens)) {
+			const mt = tokens[st.pos];
+			if (mt.indent < ind)
+				break;
+			if (mt.indent > ind) {
+				st.pos++;
+				continue;
+			}
+			if (yaml_is_item(mt.text))
+				break;
+
+			const kv = yaml_split_kv(mt.text);
+			st.pos++;
+			if (!kv || kv[0] === '')
+				continue;
+
+			const value = kv[1];
+			if (value === '') {
+				const nt = tokens[st.pos];
+				if (nt && (nt.indent > ind || (nt.indent === ind && yaml_is_item(nt.text))))
+					obj[kv[0]] = yaml_parse_node(tokens, st, nt.indent);
+				else
+					obj[kv[0]] = null;
+			} else if (match(value, /^[|>][+-]?[0-9]?$/)) {
+				const parts = [];
+				while (st.pos < length(tokens) && tokens[st.pos].indent > ind) {
+					push(parts, tokens[st.pos].text);
+					st.pos++;
+				}
+				obj[kv[0]] = join(substr(value, 0, 1) === '|' ? '\n' : ' ', parts);
+			} else {
+				obj[kv[0]] = yaml_scalar(value);
+			}
+		}
+		return obj;
+	}
+
+	st.pos++;
+	return yaml_scalar(t.text);
+}
+
+function parse_mihomo_yaml_block(text) {
+	const tokens = [];
+	let in_proxies = false;
+
+	for (let line in split(text, '\n')) {
+		line = replace(line, '\r', '');
+		if (!in_proxies) {
+			if (match(line, /^proxies:[ \t]*(#.*)?$/))
+				in_proxies = true;
+			continue;
+		}
+
+		const stripped = yaml_strip_comment(line);
+		const body = ltrim(stripped);
+		if (body === '')
+			continue;
+
+		const indent = length(stripped) - length(body);
+		if (indent === 0 && !yaml_is_item(body))
+			break;
+
+		push(tokens, { indent: indent, text: body });
+	}
+
+	if (!length(tokens))
+		return null;
+
+	let items;
+	try {
+		items = yaml_parse_node(tokens, { pos: 0 }, tokens[0].indent);
+	} catch(e) {
+		log(sprintf('Failed to parse block-style YAML proxies: %s', e));
+		return null;
+	}
+	if (type(items) !== 'array')
+		return null;
+
+	const proxies = [];
+	for (let item in items)
+		if (type(item) === 'object' && item.type) {
+			item.nodetype = 'mihomo';
+			push(proxies, item);
+		}
+
+	return length(proxies) ? proxies : null;
+}
+
 function parse_mihomo_yaml(text) {
 	if (isEmpty(text) || type(text) !== 'string')
 		return null;
@@ -669,7 +892,11 @@ function parse_mihomo_yaml(text) {
 		}
 	}
 
-	return length(proxies) ? proxies : null;
+	if (length(proxies))
+		return proxies;
+
+	/* No single-line (flow style) proxies found: try block style. */
+	return parse_mihomo_yaml_block(text);
 }
 
 function parse_uri(uri) {
